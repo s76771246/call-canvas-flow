@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CallInterface } from '@/components/CallInterface';
-import { TwilioProvider, TwilioConfig } from '@/components/TwilioProvider';
+import { TwilioProvider } from '@/components/TwilioProvider';
 
 const Index = () => {
   return (
@@ -34,15 +34,6 @@ const Index = () => {
         />
         
         <div className="relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="pt-8"
-          >
-            <TwilioConfig />
-          </motion.div>
-          
           <CallInterface
             onInitiateCall={() => {
               console.log('Initiating call...');

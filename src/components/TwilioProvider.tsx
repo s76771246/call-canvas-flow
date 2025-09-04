@@ -1,20 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
-// Twilio Voice SDK types (you'll need to install @twilio/voice-sdk)
-interface TwilioDevice {
-  setup: (token: string) => void;
-  connect: (params?: any) => void;
-  disconnect: () => void;
-  on: (event: string, callback: Function) => void;
-  mute: (muted: boolean) => void;
-}
+import { Device } from '@twilio/voice-sdk';
 
 interface TwilioContextType {
-  device: TwilioDevice | null;
+  device: Device | null;
   isReady: boolean;
   isConnected: boolean;
   isMuted: boolean;
-  initializeDevice: (accessToken: string) => void;
   makeCall: (phoneNumber?: string) => void;
   endCall: () => void;
   toggleMute: () => void;
@@ -34,91 +25,113 @@ interface TwilioProviderProps {
   children: React.ReactNode;
 }
 
+// Configuration - Replace these with your actual values
+const TWILIO_CONFIG = {
+  // You'll need to create an endpoint that generates access tokens
+  // This should be your backend endpoint that returns a JWT token
+  ACCESS_TOKEN_URL: '/api/twilio/token', // Replace with your backend endpoint
+  
+  // Dummy phone numbers - replace these with your actual numbers
+  FROM_NUMBER: '+1234567890', // Replace with your Twilio phone number
+  TO_NUMBER: '+0987654321',   // Replace with target phone number
+};
+
 export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
-  const [device, setDevice] = useState<TwilioDevice | null>(null);
+  const [device, setDevice] = useState<Device | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  const initializeDevice = async (accessToken: string) => {
+  useEffect(() => {
+    initializeDevice();
+  }, []);
+
+  const initializeDevice = async () => {
     try {
-      // Dynamically import Twilio Device SDK
-      // You'll need to install: npm install @twilio/voice-sdk
-      // const { Device } = await import('@twilio/voice-sdk');
+      // Fetch access token from your backend
+      // For now, you'll need to implement this endpoint
+      // const response = await fetch(TWILIO_CONFIG.ACCESS_TOKEN_URL);
+      // const { token } = await response.json();
       
-      // For now, we'll create a mock device for demonstration
-      const mockDevice: TwilioDevice = {
-        setup: (token: string) => {
-          console.log('Mock device setup with token:', token);
-          setTimeout(() => setIsReady(true), 1000);
-        },
-        connect: (params?: any) => {
-          console.log('Mock device connecting...', params);
-          setTimeout(() => setIsConnected(true), 2000);
-        },
-        disconnect: () => {
-          console.log('Mock device disconnecting...');
-          setIsConnected(false);
-        },
-        on: (event: string, callback: Function) => {
-          console.log('Mock device event listener:', event);
-          // Mock event handling
-          if (event === 'ready') {
-            setTimeout(callback, 1000);
-          }
-        },
-        mute: (muted: boolean) => {
-          console.log('Mock device mute:', muted);
-          setIsMuted(muted);
-        }
-      };
-
-      setDevice(mockDevice);
-      mockDevice.setup(accessToken);
-
+      // Temporary: Use a placeholder token - replace this with actual token fetch
+      console.log('Note: Replace this with actual token fetch from your backend');
+      const token = 'your-jwt-token-here'; // This needs to come from your backend
+      
+      const twilioDevice = new Device(token, {
+        logLevel: 1,
+      });
+      
+      setDevice(twilioDevice);
+      
       // Set up event listeners
-      mockDevice.on('ready', () => {
-        console.log('Twilio Device is ready');
+      twilioDevice.on('ready', () => {
+        console.log('Twilio Device is ready for calls');
         setIsReady(true);
       });
-
-      mockDevice.on('connect', () => {
+      
+      twilioDevice.on('connect', (conn) => {
         console.log('Call connected');
         setIsConnected(true);
       });
-
-      mockDevice.on('disconnect', () => {
+      
+      twilioDevice.on('disconnect', (conn) => {
         console.log('Call disconnected');
         setIsConnected(false);
       });
-
+      
+      twilioDevice.on('error', (error) => {
+        console.error('Twilio Device error:', error);
+      });
+      
     } catch (error) {
       console.error('Failed to initialize Twilio Device:', error);
     }
   };
 
-  const makeCall = (phoneNumber?: string) => {
+  const makeCall = async (phoneNumber?: string) => {
     if (device && isReady) {
-      // In a real implementation, you'd pass the phone number or other parameters
-      device.connect({
-        To: phoneNumber || '+1234567890', // Default number for demo
-      });
+      const params = {
+        'To': phoneNumber || TWILIO_CONFIG.TO_NUMBER,
+      };
+      
+      console.log('Making call to:', phoneNumber || TWILIO_CONFIG.TO_NUMBER);
+      try {
+        const call = await device.connect({ params });
+        
+        call.on('accept', () => {
+          console.log('Call accepted');
+          setIsConnected(true);
+        });
+        
+        call.on('disconnect', () => {
+          console.log('Call disconnected');
+          setIsConnected(false);
+        });
+        
+      } catch (error) {
+        console.error('Failed to make call:', error);
+      }
+      
     } else {
       console.warn('Device not ready for calls');
     }
   };
 
   const endCall = () => {
-    if (device && isConnected) {
-      device.disconnect();
+    if (device) {
+      device.disconnectAll();
+      setIsConnected(false);
     }
   };
 
   const toggleMute = () => {
-    if (device) {
-      const newMuted = !isMuted;
-      device.mute(newMuted);
-      setIsMuted(newMuted);
+    if (device && isConnected) {
+      // Get all active calls and mute the first one
+      device.calls.forEach((call) => {
+        const newMuted = !isMuted;
+        call.mute(newMuted);
+        setIsMuted(newMuted);
+      });
     }
   };
 
@@ -127,7 +140,6 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     isReady,
     isConnected,
     isMuted,
-    initializeDevice,
     makeCall,
     endCall,
     toggleMute,
@@ -137,61 +149,5 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     <TwilioContext.Provider value={value}>
       {children}
     </TwilioContext.Provider>
-  );
-};
-
-// Configuration component for Twilio credentials
-export const TwilioConfig: React.FC = () => {
-  const { initializeDevice, isReady } = useTwilio();
-  const [accessToken, setAccessToken] = useState('');
-
-  const handleInitialize = () => {
-    if (accessToken.trim()) {
-      initializeDevice(accessToken.trim());
-    } else {
-      // For demo purposes, use a mock token
-      initializeDevice('mock-twilio-access-token');
-    }
-  };
-
-  return (
-    <div className="glass rounded-2xl p-6 max-w-md mx-auto mb-8">
-      <h3 className="text-xl font-semibold mb-4 text-center">Twilio Configuration</h3>
-      
-      {!isReady ? (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Access Token (Optional for Demo)
-            </label>
-            <input
-              type="password"
-              value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
-              placeholder="Your Twilio Access Token"
-              className="w-full px-3 py-2 glass rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          
-          <button
-            onClick={handleInitialize}
-            className="w-full gradient-primary text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            Initialize Twilio Device
-          </button>
-          
-          <p className="text-xs text-muted-foreground text-center">
-            Leave empty to use demo mode with mock calls
-          </p>
-        </div>
-      ) : (
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-3 bg-success/20 rounded-full flex items-center justify-center">
-            <div className="w-6 h-6 bg-success rounded-full animate-pulse"></div>
-          </div>
-          <p className="text-success font-medium">Twilio Device Ready</p>
-        </div>
-      )}
-    </div>
   );
 };
