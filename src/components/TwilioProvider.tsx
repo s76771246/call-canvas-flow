@@ -60,7 +60,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
         return;
       }
 
-      console.log("Initializing Twilio Device...");
+      console.log("Initializing Twilio Device with token...");
 
       // Request microphone permissions early
       try {
@@ -71,66 +71,36 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
         // Continue anyway, Twilio might still work
       }
 
-      // Initialize Twilio Device with better error handling
-      try {
-        const device = new (window as any).Twilio.Device(token, {
-          enableAudio: true,
-          logLevel: 'error'
-        });
-        
-        setDevice(device);
+      // Use legacy setup method which is more reliable
+      console.log('Setting up Twilio Device...');
+      (window as any).Twilio.Device.setup(token, {
+        debug: true
+      });
+      
+      setDevice((window as any).Twilio.Device);
+      
+      // Legacy event handlers
+      (window as any).Twilio.Device.ready(() => {
+        console.log("✅ Twilio Device Ready - calls can now be made");
+        setIsReady(true);
+      });
 
-        // Use EventEmitter interface instead of deprecated callbacks
-        device.on('ready', () => {
-          console.log("Twilio Device Ready");
-          setIsReady(true);
-        });
+      (window as any).Twilio.Device.error((error: any) => {
+        console.error("❌ Twilio Device Error:", error);
+        if (error.code === 31204) {
+          console.error("JWT token is invalid or expired. Please generate a new token.");
+        }
+      });
 
-        device.on('error', (error: any) => {
-          console.error("Twilio Device Error:", error);
-          if (error.code === 31204) {
-            console.error("JWT token is invalid or expired. Please generate a new token.");
-          }
-        });
+      (window as any).Twilio.Device.connect((conn: any) => {
+        console.log("📞 Call connected");
+        setIsConnected(true);
+      });
 
-        device.on('connect', (conn: any) => {
-          console.log("Call connected");
-          setIsConnected(true);
-        });
-
-        device.on('disconnect', (conn: any) => {
-          console.log("Call disconnected");
-          setIsConnected(false);
-        });
-
-      } catch (deviceError) {
-        console.error('Failed to create Twilio Device:', deviceError);
-        
-        // Fallback to legacy setup method
-        console.log('Trying legacy setup method...');
-        (window as any).Twilio.Device.setup(token);
-        setDevice((window as any).Twilio.Device);
-        
-        // Legacy event handlers
-        (window as any).Twilio.Device.ready(() => {
-          console.log("Twilio Device Ready (legacy)");
-          setIsReady(true);
-        });
-
-        (window as any).Twilio.Device.error((error: any) => {
-          console.error("Twilio Device Error (legacy):", error);
-        });
-
-        (window as any).Twilio.Device.connect((conn: any) => {
-          console.log("Call connected (legacy)");
-          setIsConnected(true);
-        });
-
-        (window as any).Twilio.Device.disconnect((conn: any) => {
-          console.log("Call disconnected (legacy)");
-          setIsConnected(false);
-        });
-      }
+      (window as any).Twilio.Device.disconnect((conn: any) => {
+        console.log("📞 Call disconnected");
+        setIsConnected(false);
+      });
       
     } catch (error) {
       console.error('Failed to initialize Twilio Device:', error);
@@ -139,15 +109,16 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
   const makeCall = async (phoneNumber?: string) => {
     if (device && isReady) {
-      console.log('Making call to:', phoneNumber || TWILIO_CONFIG.TO_NUMBER);
+      console.log('📞 Making call to:', phoneNumber || TWILIO_CONFIG.TO_NUMBER);
       try {
         // Initiates the outgoing call using TwiML App
-        (window as any).Twilio.Device.connect();
+        const params = phoneNumber ? { To: phoneNumber } : {};
+        (window as any).Twilio.Device.connect(params);
       } catch (error) {
         console.error('Failed to make call:', error);
       }
     } else {
-      console.warn('Device not ready for calls');
+      console.warn('⚠️ Twilio device not ready');
     }
   };
 
