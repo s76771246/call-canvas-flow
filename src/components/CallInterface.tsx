@@ -1,39 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Video, VideoOff } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTwilio } from '@/components/TwilioProvider';
 import avatar from '@/assets/avatar.jpg';
 
 type CallState = 'idle' | 'calling' | 'connected' | 'ended';
 
-interface CallInterfaceProps {
-  onInitiateCall?: () => void;
-  onEndCall?: () => void;
-  onMute?: (muted: boolean) => void;
-  onSpeaker?: (enabled: boolean) => void;
-}
+interface CallInterfaceProps {}
 
-export const CallInterface: React.FC<CallInterfaceProps> = ({
-  onInitiateCall,
-  onEndCall,
-  onMute,
-  onSpeaker
-}) => {
+export const CallInterface: React.FC<CallInterfaceProps> = () => {
+  const { device, isReady, isConnected, isMuted, makeCall, endCall, toggleMute } = useTwilio();
   const [callState, setCallState] = useState<CallState>('idle');
-  const [isMuted, setIsMuted] = useState(false);
   const [speakerEnabled, setSpeakerEnabled] = useState(false);
-  const [videoEnabled, setVideoEnabled] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
 
+  // Sync callState with Twilio connection status
+  useEffect(() => {
+    if (isConnected && callState !== 'connected') {
+      setCallState('connected');
+      setCallDuration(0); // Reset timer when call connects
+    } else if (!isConnected && callState === 'connected') {
+      setCallState('ended');
+      setTimeout(() => setCallState('idle'), 1000);
+    }
+  }, [isConnected, callState]);
+
+  // Timer only runs when actually connected
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (callState === 'connected') {
+    if (isConnected && callState === 'connected') {
       interval = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [callState]);
+  }, [isConnected, callState]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -42,40 +44,27 @@ export const CallInterface: React.FC<CallInterfaceProps> = ({
   };
 
   const handleCall = () => {
+    if (!isReady) {
+      console.warn('Twilio device not ready');
+      return;
+    }
     setCallState('calling');
-    onInitiateCall?.();
-    
-    // Simulate call connection after 3 seconds
-    setTimeout(() => {
-      setCallState('connected');
-    }, 3000);
+    makeCall();
   };
 
   const handleEndCall = () => {
-    setCallState('ended');
+    endCall();
     setCallDuration(0);
-    onEndCall?.();
-    
-    // Reset to idle after animation
-    setTimeout(() => {
-      setCallState('idle');
-    }, 1000);
   };
 
   const handleMute = () => {
-    const newMuted = !isMuted;
-    setIsMuted(newMuted);
-    onMute?.(newMuted);
+    toggleMute();
   };
 
   const handleSpeaker = () => {
-    const newSpeaker = !speakerEnabled;
-    setSpeakerEnabled(newSpeaker);
-    onSpeaker?.(newSpeaker);
-  };
-
-  const handleVideo = () => {
-    setVideoEnabled(!videoEnabled);
+    setSpeakerEnabled(!speakerEnabled);
+    // Note: Speaker functionality would need additional Twilio configuration
+    console.log('Speaker toggled:', !speakerEnabled);
   };
 
   return (
@@ -242,16 +231,6 @@ export const CallInterface: React.FC<CallInterfaceProps> = ({
                       {speakerEnabled ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
                     </motion.button>
 
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleVideo}
-                      className={`glass glass-hover p-4 rounded-full ${
-                        videoEnabled ? 'bg-primary/20 border-primary/30' : ''
-                      }`}
-                    >
-                      {videoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
-                    </motion.button>
 
                     <motion.button
                       whileHover={{ scale: 1.1 }}

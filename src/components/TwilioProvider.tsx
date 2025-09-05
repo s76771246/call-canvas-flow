@@ -53,9 +53,15 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
       const token = TWILIO_CONFIG.JWT_TOKEN;
       
-      if (token === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
-        console.warn('Please replace the JWT_TOKEN in TWILIO_CONFIG with your actual generated token');
-        return;
+      // Initialize with the provided token
+      console.log("Initializing Twilio Device with provided token...");
+
+      // Request microphone permissions
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("Microphone permission granted");
+      } catch (permissionError) {
+        console.warn("Microphone permission denied:", permissionError);
       }
 
       // Setup Twilio Device with the token

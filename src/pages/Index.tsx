@@ -34,24 +34,7 @@ const Index = () => {
         />
         
         <div className="relative z-10">
-          <CallInterface
-            onInitiateCall={() => {
-              console.log('Initiating call...');
-              // Here you would integrate with your Twilio implementation
-            }}
-            onEndCall={() => {
-              console.log('Ending call...');
-              // Here you would handle call termination
-            }}
-            onMute={(muted) => {
-              console.log('Mute toggled:', muted);
-              // Here you would handle mute functionality
-            }}
-            onSpeaker={(enabled) => {
-              console.log('Speaker toggled:', enabled);
-              // Here you would handle speaker functionality
-            }}
-          />
+          <CallInterface />
         </div>
       </div>
     </TwilioProvider>
