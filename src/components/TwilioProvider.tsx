@@ -34,39 +34,29 @@ const TWILIO_CONFIG = {
   TO_NUMBER: '+0987654321',   // Replace with target phone number
 };
 
+// Global variable to track initialization
+let twilioInitialized = false;
+let twilioDevice: any = null;
+
 export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   const [device, setDevice] = useState<any | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  useEffect(() => {
-    // Use setTimeout to ensure this runs after React's render cycle
-    const timer = setTimeout(() => {
-      initializeDevice();
-    }, 500);
+  // Initialize Twilio only when needed and outside React lifecycle
+  const initializeTwilioDevice = async () => {
+    if (twilioInitialized) {
+      return twilioDevice;
+    }
 
-    return () => {
-      clearTimeout(timer);
-      // Cleanup on unmount
-      if ((window as any).Twilio?.Device) {
-        try {
-          (window as any).Twilio.Device.disconnectAll();
-        } catch (error) {
-          console.warn('Error during cleanup:', error);
-        }
-      }
-    };
-  }, []);
-
-  const initializeDevice = async () => {
     try {
-      console.log("🔧 Starting Twilio Device initialization...");
+      console.log("🔧 Initializing Twilio Device on user interaction...");
       
       // Check if Twilio SDK is loaded
       if (!(window as any).Twilio) {
         console.error("❌ Twilio JS SDK not loaded");
-        return;
+        return null;
       }
 
       const token = TWILIO_CONFIG.JWT_TOKEN;
@@ -74,104 +64,90 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       // Check if token is provided
       if (!token || token === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
         console.warn('⚠️ Please provide a valid JWT token in TWILIO_CONFIG');
-        return;
-      }
-
-      // Ensure we have audio context support
-      if (!window.AudioContext && !(window as any).webkitAudioContext) {
-        console.warn('⚠️ Audio context not supported in this browser');
+        return null;
       }
 
       console.log("🎤 Requesting microphone permissions...");
       
-      // Request microphone permissions and handle properly
+      // Request microphone permissions
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("✅ Microphone permission granted");
-        // Important: Stop all tracks to release the microphone
+        // Stop all tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
-        
-        // Small delay to ensure audio context is ready
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
       } catch (permissionError) {
         console.warn("⚠️ Microphone permission denied:", permissionError);
-        // Don't return, continue with setup
       }
 
-      console.log('📱 Setting up Twilio Device with legacy method...');
+      console.log('📱 Setting up Twilio Device...');
       
-      // Use the most basic setup approach
-      try {
-        (window as any).Twilio.Device.setup(token);
-        
-        // Store reference to device
-        setDevice((window as any).Twilio.Device);
-        
-        // Setup event handlers with improved logging
-        (window as any).Twilio.Device.ready(() => {
-          console.log("✅ Twilio Device Ready - You can now make calls!");
-          setIsReady(true);
-        });
+      // Setup device with minimal configuration
+      (window as any).Twilio.Device.setup(token);
+      
+      twilioDevice = (window as any).Twilio.Device;
+      
+      // Setup event handlers
+      (window as any).Twilio.Device.ready(() => {
+        console.log("✅ Twilio Device Ready - You can now make calls!");
+        setIsReady(true);
+        setDevice(twilioDevice);
+      });
 
-        (window as any).Twilio.Device.error((error: any) => {
-          console.error("❌ Twilio Device Error:", error);
-          if (error.code === 31204) {
-            console.error("🔑 JWT token is invalid or expired. Please generate a new token.");
-          } else if (error.code === 31208) {
-            console.error("🔑 JWT token is malformed.");
-          } else {
-            console.error(`🔑 Error code: ${error.code}, Message: ${error.message}`);
-          }
-        });
+      (window as any).Twilio.Device.error((error: any) => {
+        console.error("❌ Twilio Device Error:", error);
+        if (error.code === 31204) {
+          console.error("🔑 JWT token is invalid or expired. Please generate a new token.");
+        }
+      });
 
-        (window as any).Twilio.Device.connect((conn: any) => {
-          console.log("📞 Call connected successfully");
-          setIsConnected(true);
-        });
+      (window as any).Twilio.Device.connect((conn: any) => {
+        console.log("📞 Call connected successfully");
+        setIsConnected(true);
+      });
 
-        (window as any).Twilio.Device.disconnect((conn: any) => {
-          console.log("📞 Call disconnected");
-          setIsConnected(false);
-        });
+      (window as any).Twilio.Device.disconnect((conn: any) => {
+        console.log("📞 Call disconnected");
+        setIsConnected(false);
+      });
 
-        console.log("🎯 Twilio Device setup completed, waiting for ready event...");
-        
-      } catch (setupError) {
-        console.error('❌ Failed to setup Twilio Device:', setupError);
-      }
+      twilioInitialized = true;
+      return twilioDevice;
       
     } catch (error) {
       console.error('❌ Critical error during Twilio initialization:', error);
+      return null;
     }
   };
 
   const makeCall = async (phoneNumber?: string) => {
-    if (device && isReady) {
-      console.log('📞 Making call to:', phoneNumber || TWILIO_CONFIG.TO_NUMBER);
-      try {
-        // Initiates the outgoing call using TwiML App
+    try {
+      // Initialize Twilio if not already done
+      const currentDevice = twilioDevice || await initializeTwilioDevice();
+      
+      if (currentDevice && isReady) {
+        console.log('📞 Making call to:', phoneNumber || TWILIO_CONFIG.TO_NUMBER);
         const params = phoneNumber ? { To: phoneNumber } : {};
         (window as any).Twilio.Device.connect(params);
-      } catch (error) {
-        console.error('Failed to make call:', error);
+      } else if (currentDevice && !isReady) {
+        console.warn('⚠️ Twilio device is initializing, please wait...');
+      } else {
+        console.warn('⚠️ Failed to initialize Twilio device');
       }
-    } else {
-      console.warn('⚠️ Twilio device not ready');
+    } catch (error) {
+      console.error('Failed to make call:', error);
     }
   };
 
   const endCall = () => {
-    if (device) {
+    if (twilioDevice) {
       (window as any).Twilio.Device.disconnectAll();
       setIsConnected(false);
     }
   };
 
   const toggleMute = () => {
-    if (device && isConnected) {
+    if (twilioDevice && isConnected) {
       const newMuted = !isMuted;
-      // Note: Mute functionality depends on your TwiML configuration
       setIsMuted(newMuted);
       console.log('Mute toggled:', newMuted);
     }
