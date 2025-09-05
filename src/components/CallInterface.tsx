@@ -44,11 +44,9 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
   };
 
   const handleCall = () => {
-    if (!isReady) {
-      console.warn('Twilio device not ready');
-      return;
-    }
+    console.log('📞 Call button clicked');
     setCallState('calling');
+    // makeCall will now handle initialization internally
     makeCall();
   };
 
