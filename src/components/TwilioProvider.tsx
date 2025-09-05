@@ -39,16 +39,38 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   const [isReady, setIsReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   useEffect(() => {
-    initializeDevice();
+    // Only initialize once
+    if (!isInitializing && !device) {
+      setIsInitializing(true);
+      initializeDevice();
+    }
   }, []);
+
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (device && (window as any).Twilio?.Device) {
+        try {
+          (window as any).Twilio.Device.disconnectAll();
+        } catch (error) {
+          console.warn('Error during cleanup:', error);
+        }
+      }
+    };
+  }, [device]);
 
   const initializeDevice = async () => {
     try {
+      // Wait for DOM to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Check if Twilio SDK is loaded
       if (!(window as any).Twilio) {
         console.error("Twilio JS SDK not loaded");
+        setIsInitializing(false);
         return;
       }
 
@@ -57,36 +79,45 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       // Check if token is provided
       if (!token || token === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
         console.warn('Please provide a valid JWT token in TWILIO_CONFIG');
+        setIsInitializing(false);
         return;
       }
 
-      console.log("Initializing Twilio Device with token...");
+      console.log("🔧 Initializing Twilio Device with token...");
 
-      // Request microphone permissions early
+      // Request microphone permissions first
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log("Microphone permission granted");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("🎤 Microphone permission granted");
+        // Stop the stream immediately, we just needed permission
+        stream.getTracks().forEach(track => track.stop());
       } catch (permissionError) {
-        console.warn("Microphone permission denied:", permissionError);
+        console.warn("⚠️ Microphone permission denied:", permissionError);
         // Continue anyway, Twilio might still work
       }
 
-      // Use legacy setup method which is more reliable
-      console.log('Setting up Twilio Device...');
+      // Use legacy setup method which is most compatible
+      console.log('📱 Setting up Twilio Device...');
+      
+      // Setup device with token
       (window as any).Twilio.Device.setup(token, {
-        debug: true
+        debug: false,
+        enableAudio: true
       });
       
+      // Store reference to device
       setDevice((window as any).Twilio.Device);
       
-      // Legacy event handlers
+      // Setup event handlers
       (window as any).Twilio.Device.ready(() => {
         console.log("✅ Twilio Device Ready - calls can now be made");
         setIsReady(true);
+        setIsInitializing(false);
       });
 
       (window as any).Twilio.Device.error((error: any) => {
         console.error("❌ Twilio Device Error:", error);
+        setIsInitializing(false);
         if (error.code === 31204) {
           console.error("JWT token is invalid or expired. Please generate a new token.");
         }
@@ -103,7 +134,8 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       });
       
     } catch (error) {
-      console.error('Failed to initialize Twilio Device:', error);
+      console.error('❌ Failed to initialize Twilio Device:', error);
+      setIsInitializing(false);
     }
   };
 
