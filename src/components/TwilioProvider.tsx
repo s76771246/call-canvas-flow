@@ -29,13 +29,13 @@ interface TwilioProviderProps {
 const TWILIO_CONFIG = {
   // ⚠️ IMPORTANT: Replace with your actual JWT token from Twilio Console
   // Generate a new token at: https://console.twilio.com/develop/voice/manage/access-tokens
-  JWT_TOKEN: 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE',
+  JWT_TOKEN: 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZS0xNzU3MDUyMzQ1IiwiZ3JhbnRzIjp7InZvaWNlIjp7ImluY29taW5nIjp7ImFsbG93Ijp0cnVlfSwib3V0Z29pbmciOnsiYXBwbGljYXRpb25fc2lkIjoiRUgyYzFiZGVkZjA4MDc2MzgzNmYzM2Q2MGY4MmE2Y2Q5OCJ9fSwiaWRlbnRpdHkiOiJUZXN0IENhbGxtZSJ9LCJpc3MiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZSIsImV4cCI6MTc1NzA1NTk0NSwibmJmIjoxNzU3MDUyMzQ1LCJzdWIiOiJBQzYxYmU4OWY2MzMzM2I3NDg4NThmOTY3MWZlZWYyNmQ1In0.v3bmD8DyyG3BbEHn36-bVwkGYUg3q-jGjGE2q-toaOQ',
   
   // ⚠️ IMPORTANT: Replace with your actual Twilio phone number (format: +1234567890)
-  FROM_NUMBER: '+1234567890',
+  FROM_NUMBER: '+17408808447',
   
   // ⚠️ IMPORTANT: Replace with the phone number you want to call (format: +1234567890)
-  TO_NUMBER: '+0987654321',
+  TO_NUMBER: '+91 97592 06343',
   
   // Optional: Token endpoint URL if you have a backend
   ACCESS_TOKEN_URL: 'https://your-backend.com/api/twilio/token',
