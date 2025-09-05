@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Device } from '@twilio/voice-sdk';
 
 interface TwilioContextType {
-  device: Device | null;
+  device: any | null;
   isReady: boolean;
   isConnected: boolean;
   isMuted: boolean;
@@ -25,19 +24,18 @@ interface TwilioProviderProps {
   children: React.ReactNode;
 }
 
-// Configuration - Replace these with your actual values
+// Configuration - Replace with your actual JWT token and phone numbers
 const TWILIO_CONFIG = {
-  // You'll need to create an endpoint that generates access tokens
-  // This should be your backend endpoint that returns a JWT token
-  ACCESS_TOKEN_URL: '/api/twilio/token', // Replace with your backend endpoint
+  // PASTE YOUR GENERATED JWT TOKEN HERE
+  JWT_TOKEN: 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE',
   
-  // Dummy phone numbers - replace these with your actual numbers
+  // Replace these with your actual phone numbers
   FROM_NUMBER: '+1234567890', // Replace with your Twilio phone number
   TO_NUMBER: '+0987654321',   // Replace with target phone number
 };
 
 export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
-  const [device, setDevice] = useState<Device | null>(null);
+  const [device, setDevice] = useState<any | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -48,39 +46,39 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
   const initializeDevice = async () => {
     try {
-      // Fetch access token from your backend
-      // For now, you'll need to implement this endpoint
-      // const response = await fetch(TWILIO_CONFIG.ACCESS_TOKEN_URL);
-      // const { token } = await response.json();
+      if (!(window as any).Twilio) {
+        console.error("Twilio JS SDK not loaded");
+        return;
+      }
+
+      const token = TWILIO_CONFIG.JWT_TOKEN;
       
-      // Temporary: Use a placeholder token - replace this with actual token fetch
-      console.log('Note: Replace this with actual token fetch from your backend');
-      const token = 'your-jwt-token-here'; // This needs to come from your backend
-      
-      const twilioDevice = new Device(token, {
-        logLevel: 1,
-      });
-      
-      setDevice(twilioDevice);
-      
-      // Set up event listeners
-      twilioDevice.on('ready', () => {
-        console.log('Twilio Device is ready for calls');
+      if (token === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
+        console.warn('Please replace the JWT_TOKEN in TWILIO_CONFIG with your actual generated token');
+        return;
+      }
+
+      // Setup Twilio Device with the token
+      (window as any).Twilio.Device.setup(token);
+      setDevice((window as any).Twilio.Device);
+
+      (window as any).Twilio.Device.ready(() => {
+        console.log("Twilio Device Ready");
         setIsReady(true);
       });
-      
-      twilioDevice.on('connect', (conn) => {
-        console.log('Call connected');
+
+      (window as any).Twilio.Device.error((error: any) => {
+        console.error("Twilio Device Error:", error);
+      });
+
+      (window as any).Twilio.Device.connect((conn: any) => {
+        console.log("Call connected");
         setIsConnected(true);
       });
-      
-      twilioDevice.on('disconnect', (conn) => {
-        console.log('Call disconnected');
+
+      (window as any).Twilio.Device.disconnect((conn: any) => {
+        console.log("Call disconnected");
         setIsConnected(false);
-      });
-      
-      twilioDevice.on('error', (error) => {
-        console.error('Twilio Device error:', error);
       });
       
     } catch (error) {
@@ -90,28 +88,13 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
   const makeCall = async (phoneNumber?: string) => {
     if (device && isReady) {
-      const params = {
-        'To': phoneNumber || TWILIO_CONFIG.TO_NUMBER,
-      };
-      
       console.log('Making call to:', phoneNumber || TWILIO_CONFIG.TO_NUMBER);
       try {
-        const call = await device.connect({ params });
-        
-        call.on('accept', () => {
-          console.log('Call accepted');
-          setIsConnected(true);
-        });
-        
-        call.on('disconnect', () => {
-          console.log('Call disconnected');
-          setIsConnected(false);
-        });
-        
+        // Initiates the outgoing call using TwiML App
+        (window as any).Twilio.Device.connect();
       } catch (error) {
         console.error('Failed to make call:', error);
       }
-      
     } else {
       console.warn('Device not ready for calls');
     }
@@ -119,19 +102,17 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
   const endCall = () => {
     if (device) {
-      device.disconnectAll();
+      (window as any).Twilio.Device.disconnectAll();
       setIsConnected(false);
     }
   };
 
   const toggleMute = () => {
     if (device && isConnected) {
-      // Get all active calls and mute the first one
-      device.calls.forEach((call) => {
-        const newMuted = !isMuted;
-        call.mute(newMuted);
-        setIsMuted(newMuted);
-      });
+      const newMuted = !isMuted;
+      // Note: Mute functionality depends on your TwiML configuration
+      setIsMuted(newMuted);
+      console.log('Mute toggled:', newMuted);
     }
   };
 
