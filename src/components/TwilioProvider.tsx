@@ -27,7 +27,7 @@ interface TwilioProviderProps {
 // Configuration - Replace with your actual JWT token and phone numbers
 const TWILIO_CONFIG = {
   // PASTE YOUR GENERATED JWT TOKEN HERE
-  JWT_TOKEN: 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZS0xNzU3MDQ5NjQyIiwiZ3JhbnRzIjp7InZvaWNlIjp7ImluY29taW5nIjp7ImFsbG93Ijp0cnVlfSwib3V0Z29pbmciOnsiYXBwbGljYXRpb25fc2lkIjoiRUgyYzFiZGVkZjA4MDc2MzgzNmYzM2Q2MGY4MmE2Y2Q5OCJ9fSwiaWRlbnRpdHkiOiJUZXN0IENhbGxtZSJ9LCJpc3MiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZSIsImV4cCI6MTc1NzA1MzI0MiwibmJmIjoxNzU3MDQ5NjQyLCJzdWIiOiJBQzYxYmU4OWY2MzMzM2I3NDg4NThmOTY3MWZlZWYyNmQ1In0.blklh8i2SlzEDebIFMAow0Rpnp3Zi80mz1FtRERwGCc',
+  JWT_TOKEN: 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE',
   
   // Replace these with your actual phone numbers
   FROM_NUMBER: '+1234567890', // Replace with your Twilio phone number
@@ -46,6 +46,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
   const initializeDevice = async () => {
     try {
+      // Check if Twilio SDK is loaded
       if (!(window as any).Twilio) {
         console.error("Twilio JS SDK not loaded");
         return;
@@ -53,39 +54,83 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
       const token = TWILIO_CONFIG.JWT_TOKEN;
       
-      // Initialize with the provided token
-      console.log("Initializing Twilio Device with provided token...");
+      // Check if token is provided
+      if (!token || token === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
+        console.warn('Please provide a valid JWT token in TWILIO_CONFIG');
+        return;
+      }
 
-      // Request microphone permissions
+      console.log("Initializing Twilio Device...");
+
+      // Request microphone permissions early
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("Microphone permission granted");
       } catch (permissionError) {
         console.warn("Microphone permission denied:", permissionError);
+        // Continue anyway, Twilio might still work
       }
 
-      // Setup Twilio Device with the token
-      (window as any).Twilio.Device.setup(token);
-      setDevice((window as any).Twilio.Device);
+      // Initialize Twilio Device with better error handling
+      try {
+        const device = new (window as any).Twilio.Device(token, {
+          enableAudio: true,
+          logLevel: 'error'
+        });
+        
+        setDevice(device);
 
-      (window as any).Twilio.Device.ready(() => {
-        console.log("Twilio Device Ready");
-        setIsReady(true);
-      });
+        // Use EventEmitter interface instead of deprecated callbacks
+        device.on('ready', () => {
+          console.log("Twilio Device Ready");
+          setIsReady(true);
+        });
 
-      (window as any).Twilio.Device.error((error: any) => {
-        console.error("Twilio Device Error:", error);
-      });
+        device.on('error', (error: any) => {
+          console.error("Twilio Device Error:", error);
+          if (error.code === 31204) {
+            console.error("JWT token is invalid or expired. Please generate a new token.");
+          }
+        });
 
-      (window as any).Twilio.Device.connect((conn: any) => {
-        console.log("Call connected");
-        setIsConnected(true);
-      });
+        device.on('connect', (conn: any) => {
+          console.log("Call connected");
+          setIsConnected(true);
+        });
 
-      (window as any).Twilio.Device.disconnect((conn: any) => {
-        console.log("Call disconnected");
-        setIsConnected(false);
-      });
+        device.on('disconnect', (conn: any) => {
+          console.log("Call disconnected");
+          setIsConnected(false);
+        });
+
+      } catch (deviceError) {
+        console.error('Failed to create Twilio Device:', deviceError);
+        
+        // Fallback to legacy setup method
+        console.log('Trying legacy setup method...');
+        (window as any).Twilio.Device.setup(token);
+        setDevice((window as any).Twilio.Device);
+        
+        // Legacy event handlers
+        (window as any).Twilio.Device.ready(() => {
+          console.log("Twilio Device Ready (legacy)");
+          setIsReady(true);
+        });
+
+        (window as any).Twilio.Device.error((error: any) => {
+          console.error("Twilio Device Error (legacy):", error);
+        });
+
+        (window as any).Twilio.Device.connect((conn: any) => {
+          console.log("Call connected (legacy)");
+          setIsConnected(true);
+        });
+
+        (window as any).Twilio.Device.disconnect((conn: any) => {
+          console.log("Call disconnected (legacy)");
+          setIsConnected(false);
+        });
+      }
       
     } catch (error) {
       console.error('Failed to initialize Twilio Device:', error);
