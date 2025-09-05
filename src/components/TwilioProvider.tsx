@@ -27,7 +27,7 @@ interface TwilioProviderProps {
 // Configuration - Replace with your actual JWT token and phone numbers
 const TWILIO_CONFIG = {
   // PASTE YOUR GENERATED JWT TOKEN HERE
-  JWT_TOKEN: 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE',
+  JWT_TOKEN: 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZS0xNzU3MDQ5NjQyIiwiZ3JhbnRzIjp7InZvaWNlIjp7ImluY29taW5nIjp7ImFsbG93Ijp0cnVlfSwib3V0Z29pbmciOnsiYXBwbGljYXRpb25fc2lkIjoiRUgyYzFiZGVkZjA4MDc2MzgzNmYzM2Q2MGY4MmE2Y2Q5OCJ9fSwiaWRlbnRpdHkiOiJUZXN0IENhbGxtZSJ9LCJpc3MiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZSIsImV4cCI6MTc1NzA1MzI0MiwibmJmIjoxNzU3MDQ5NjQyLCJzdWIiOiJBQzYxYmU4OWY2MzMzM2I3NDg4NThmOTY3MWZlZWYyNmQ1In0.blklh8i2SlzEDebIFMAow0Rpnp3Zi80mz1FtRERwGCc',
   
   // Replace these with your actual phone numbers
   FROM_NUMBER: '+1234567890', // Replace with your Twilio phone number
