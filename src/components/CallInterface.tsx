@@ -4,13 +4,15 @@ import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTwilio } from '@/components/TwilioProvider';
 import avatar from '@/assets/avatar.jpg';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 type CallState = 'idle' | 'calling' | 'connected' | 'ended';
 
 interface CallInterfaceProps {}
 
 export const CallInterface: React.FC<CallInterfaceProps> = () => {
-  const { device, isReady, isConnected, isMuted, makeCall, endCall, toggleMute } = useTwilio();
+  const { device, isReady, isConnected, isMuted, makeCall, endCall, toggleMute, initializationError } = useTwilio();
   const [callState, setCallState] = useState<CallState>('idle');
   const [speakerEnabled, setSpeakerEnabled] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -67,6 +69,22 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      {/* Configuration Error Alert */}
+      {initializationError && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed top-4 left-4 right-4 z-50 max-w-2xl mx-auto"
+        >
+          <Alert className="glass border-destructive/50 bg-destructive/10">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="whitespace-pre-line">
+              {initializationError}
+            </AlertDescription>
+          </Alert>
+        </motion.div>
+      )}
+
       {callState === 'idle' && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -86,16 +104,28 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
           </motion.div>
           
           <h1 className="text-4xl font-bold mb-2 text-shadow">Ready to Connect</h1>
-          <p className="text-lg text-muted-foreground mb-8">Start your conversation with a single tap</p>
+          <p className="text-lg text-muted-foreground mb-4">
+            {isReady ? 'Start your conversation with a single tap' : 'Initializing Twilio...'}
+          </p>
+          
+          {!isReady && !initializationError && (
+            <div className="flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <span className="ml-2 text-sm text-muted-foreground">Setting up voice connection...</span>
+            </div>
+          )}
           
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               onClick={handleCall}
+              disabled={!isReady && !initializationError}
               size="lg"
-              className="glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow animate-glow"
+              className={`glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow ${
+                isReady ? 'animate-glow' : 'opacity-50'
+              }`}
             >
               <Phone className="mr-3 h-6 w-6" />
-              Call Me
+              {initializationError ? 'Demo Call' : isReady ? 'Call Me' : 'Initializing...'}
             </Button>
           </motion.div>
         </motion.div>
