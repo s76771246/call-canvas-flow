@@ -57,7 +57,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     const checkConfiguration = () => {
       const errors = [];
       
-      if (!TWILIO_CONFIG.JWT_TOKEN || TWILIO_CONFIG.JWT_TOKEN === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
+      if (!TWILIO_CONFIG.JWT_TOKEN || TWILIO_CONFIG.JWT_TOKEN === 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZS0xNzU3MDUyMzQ1IiwiZ3JhbnRzIjp7InZvaWNlIjp7ImluY29taW5nIjp7ImFsbG93Ijp0cnVlfSwib3V0Z29pbmciOnsiYXBwbGljYXRpb25fc2lkIjoiRUgyYzFiZGVkZjA4MDc2MzgzNmYzM2Q2MGY4MmE2Y2Q5OCJ9fSwiaWRlbnRpdHkiOiJUZXN0IENhbGxtZSJ9LCJpc3MiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZSIsImV4cCI6MTc1NzA1NTk0NSwibmJmIjoxNzU3MDUyMzQ1LCJzdWIiOiJBQzYxYmU4OWY2MzMzM2I3NDg4NThmOTY3MWZlZWYyNmQ1In0.v3bmD8DyyG3BbEHn36-bVwkGYUg3q-jGjGE2q-toaOQ') {
         errors.push('JWT Token is not configured');
       }
       
@@ -74,7 +74,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       }
       
       if (errors.length > 0) {
-        const errorMessage = `Twilio Configuration Issues:\n${errors.map(e => `• ${e}`).join('\n')}`;
+        const errorMessage = `🚨 CARA Setup Required\n\nTo make live calls, you need to:\n\n1. Get a Twilio Account:\n   • Sign up at twilio.com\n   • Purchase a phone number\n   • Get your credentials\n\n2. Generate JWT Token:\n   • Go to Twilio Console > Voice > Access Tokens\n   • Create a new token with identity "TestUser"\n   • Copy the JWT token\n\n3. Update Configuration:\n   • Replace JWT_TOKEN in TwilioProvider.tsx\n   • Set your Twilio phone number\n   • Set target phone number\n\n📖 See CARA_SETUP.md for detailed instructions\n\n⚠️ Current issues:\n${errors.map(e => `• ${e}`).join('\n')}\n\n🎭 Demo mode available - click "Demo Call" to test UI`;
         setInitializationError(errorMessage);
         console.error('❌ Twilio Configuration Issues:', errors);
         return false;
@@ -85,6 +85,16 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     
     checkConfiguration();
   }, []);
+
+  // Set demo mode after a short delay if configuration is missing
+  useEffect(() => {
+    if (initializationError) {
+      const timer = setTimeout(() => {
+        setIsReady(true); // Enable demo mode
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [initializationError]);
 
   // Initialize Twilio Device
   const initializeTwilioDevice = async (): Promise<any> => {

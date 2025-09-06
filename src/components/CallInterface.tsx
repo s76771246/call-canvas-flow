@@ -74,11 +74,11 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed top-4 left-4 right-4 z-50 max-w-2xl mx-auto"
+          className="fixed top-4 left-4 right-4 z-50 max-w-4xl mx-auto"
         >
-          <Alert className="glass border-destructive/50 bg-destructive/10">
+          <Alert className="glass border-primary/50 bg-primary/10 text-left">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="whitespace-pre-line">
+            <AlertDescription className="whitespace-pre-line text-sm leading-relaxed">
               {initializationError}
             </AlertDescription>
           </Alert>
@@ -118,14 +118,12 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               onClick={handleCall}
-              disabled={!isReady && !initializationError}
+              disabled={false}
               size="lg"
-              className={`glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow ${
-                isReady ? 'animate-glow' : 'opacity-50'
-              }`}
+              className="glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow animate-glow"
             >
               <Phone className="mr-3 h-6 w-6" />
-              {initializationError ? 'Demo Call' : isReady ? 'Call Me' : 'Initializing...'}
+              {initializationError ? 'Demo Call' : 'Call Me'}
             </Button>
           </motion.div>
         </motion.div>
