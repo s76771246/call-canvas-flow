@@ -1,10 +1,49 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+// Token validation utility
+const validateJWTToken = (token: string): { isValid: boolean; error?: string; identity?: string; exp?: number } => {
+  try {
+    if (!token || token.trim() === '') {
+      return { isValid: false, error: 'Token is empty' };
+    }
+
+    // Basic JWT structure check
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return { isValid: false, error: 'Invalid JWT format - should have 3 parts separated by dots' };
+    }
+
+    // Decode payload
+    const payload = JSON.parse(atob(parts[1]));
+    
+    // Check expiration
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      return { isValid: false, error: 'Token has expired' };
+    }
+
+    // Check if it's a Twilio token
+    if (!payload.grants || !payload.grants.voice) {
+      return { isValid: false, error: 'Token does not contain voice grants' };
+    }
+
+    return { 
+      isValid: true, 
+      identity: payload.grants.identity || payload.identity,
+      exp: payload.exp 
+    };
+  } catch (error) {
+    return { isValid: false, error: 'Failed to parse JWT token' };
+  }
+};
+
 interface TwilioContextType {
   device: any | null;
   isReady: boolean;
   isConnected: boolean;
   isMuted: boolean;
+  isRinging: boolean;
+  tokenValidation: { isValid: boolean; error?: string; identity?: string; exp?: number } | null;
   makeCall: (phoneNumber?: string) => void;
   endCall: () => void;
   toggleMute: () => void;
@@ -51,14 +90,61 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [isRinging, setIsRinging] = useState(false);
+  const [tokenValidation, setTokenValidation] = useState<{ isValid: boolean; error?: string; identity?: string; exp?: number } | null>(null);
+  const [ringingAudio, setRingingAudio] = useState<HTMLAudioElement | null>(null);
+
+  // Initialize ringing sound
+  useEffect(() => {
+    // Create ringing sound using Web Audio API
+    const createRingingSound = () => {
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Create ringing tone (440Hz and 480Hz for realistic ring)
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        
+        return { audioContext, oscillator, gainNode };
+      } catch (error) {
+        console.warn('Could not create ringing sound:', error);
+        return null;
+      }
+    };
+
+    const ringingComponents = createRingingSound();
+    if (ringingComponents) {
+      // Store for cleanup
+      (window as any).ringingComponents = ringingComponents;
+    }
+
+    return () => {
+      if ((window as any).ringingComponents) {
+        try {
+          (window as any).ringingComponents.audioContext.close();
+        } catch (error) {
+          console.warn('Error cleaning up audio context:', error);
+        }
+      }
+    };
+  }, []);
 
   // Check configuration on mount
   useEffect(() => {
     const checkConfiguration = () => {
+      // First validate the JWT token
+      const validation = validateJWTToken(TWILIO_CONFIG.JWT_TOKEN);
+      setTokenValidation(validation);
+      
       const errors = [];
       
-      if (!TWILIO_CONFIG.JWT_TOKEN || TWILIO_CONFIG.JWT_TOKEN === 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZS0xNzU3MDUyMzQ1IiwiZ3JhbnRzIjp7InZvaWNlIjp7ImluY29taW5nIjp7ImFsbG93Ijp0cnVlfSwib3V0Z29pbmciOnsiYXBwbGljYXRpb25fc2lkIjoiRUgyYzFiZGVkZjA4MDc2MzgzNmYzM2Q2MGY4MmE2Y2Q5OCJ9fSwiaWRlbnRpdHkiOiJUZXN0IENhbGxtZSJ9LCJpc3MiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZSIsImV4cCI6MTc1NzA1NTk0NSwibmJmIjoxNzU3MDUyMzQ1LCJzdWIiOiJBQzYxYmU4OWY2MzMzM2I3NDg4NThmOTY3MWZlZWYyNmQ1In0.v3bmD8DyyG3BbEHn36-bVwkGYUg3q-jGjGE2q-toaOQ') {
-        errors.push('JWT Token is not configured');
+      if (!validation.isValid) {
+        errors.push(`JWT Token Error: ${validation.error}`);
       }
       
       if (!TWILIO_CONFIG.FROM_NUMBER || TWILIO_CONFIG.FROM_NUMBER === '+1234567890') {
@@ -74,7 +160,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       }
       
       if (errors.length > 0) {
-        const errorMessage = `🚨 CARA Setup Required\n\nTo make live calls, you need to:\n\n1. Get a Twilio Account:\n   • Sign up at twilio.com\n   • Purchase a phone number\n   • Get your credentials\n\n2. Generate JWT Token:\n   • Go to Twilio Console > Voice > Access Tokens\n   • Create a new token with identity "TestUser"\n   • Copy the JWT token\n\n3. Update Configuration:\n   • Replace JWT_TOKEN in TwilioProvider.tsx\n   • Set your Twilio phone number\n   • Set target phone number\n\n📖 See CARA_SETUP.md for detailed instructions\n\n⚠️ Current issues:\n${errors.map(e => `• ${e}`).join('\n')}\n\n🎭 Demo mode available - click "Demo Call" to test UI`;
+        const errorMessage = `🚨 Configuration Issues Found:\n\n${errors.map(e => `• ${e}`).join('\n')}\n\n${validation.isValid ? '✅ JWT Token is valid!' : '❌ Please fix JWT token first'}\n\n🎭 Demo mode will be available in 3 seconds`;
         setInitializationError(errorMessage);
         console.error('❌ Twilio Configuration Issues:', errors);
         return false;
@@ -90,12 +176,77 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   useEffect(() => {
     if (initializationError) {
       const timer = setTimeout(() => {
+        console.log('🎭 Enabling demo mode...');
         setIsReady(true); // Enable demo mode
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [initializationError]);
 
+  // Play ringing sound
+  const playRingingSound = () => {
+    try {
+      setIsRinging(true);
+      
+      // Create a simple ringing pattern using oscillators
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      const playRingTone = () => {
+        const oscillator1 = audioContext.createOscillator();
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator1.connect(gainNode);
+        oscillator2.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Create dual-tone ringing (440Hz + 480Hz)
+        oscillator1.frequency.setValueAtTime(440, audioContext.currentTime);
+        oscillator2.frequency.setValueAtTime(480, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        
+        oscillator1.start();
+        oscillator2.start();
+        
+        // Ring for 1 second, pause for 3 seconds
+        setTimeout(() => {
+          try {
+            oscillator1.stop();
+            oscillator2.stop();
+          } catch (e) {
+            console.warn('Error stopping oscillators:', e);
+          }
+        }, 1000);
+      };
+      
+      // Play initial ring
+      playRingTone();
+      
+      // Continue ringing every 4 seconds
+      const ringInterval = setInterval(() => {
+        if (isRinging && !isConnected) {
+          playRingTone();
+        } else {
+          clearInterval(ringInterval);
+        }
+      }, 4000);
+      
+      // Store interval for cleanup
+      (window as any).ringInterval = ringInterval;
+      
+    } catch (error) {
+      console.warn('Could not play ringing sound:', error);
+    }
+  };
+
+  // Stop ringing sound
+  const stopRingingSound = () => {
+    setIsRinging(false);
+    if ((window as any).ringInterval) {
+      clearInterval((window as any).ringInterval);
+      (window as any).ringInterval = null;
+    }
+  };
   // Initialize Twilio Device
   const initializeTwilioDevice = async (): Promise<any> => {
     if (twilioInitialized && twilioDevice) {
@@ -182,11 +333,13 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       TwilioDevice.connect((conn: any) => {
         console.log("📞 Call connected successfully");
         console.log("Connection details:", conn);
+        stopRingingSound(); // Stop ringing when connected
         setIsConnected(true);
       });
 
       TwilioDevice.disconnect((conn: any) => {
         console.log("📞 Call disconnected");
+        stopRingingSound(); // Stop ringing when disconnected
         setIsConnected(false);
         setIsMuted(false);
       });
@@ -209,6 +362,9 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   const makeCall = async (phoneNumber?: string) => {
     try {
       console.log('📞 Starting call process...');
+      
+      // Start ringing sound immediately
+      playRingingSound();
       
       // Check if we have configuration issues
       if (initializationError) {
@@ -288,20 +444,20 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   // Demo mode simulation for when Twilio is not properly configured
   const simulateCall = () => {
     console.log('🎭 Running in demo mode (no actual call will be made)...');
-    console.log('💡 To make real calls, please:');
-    console.log('1. Generate a JWT token from Twilio Console');
-    console.log('2. Update TWILIO_CONFIG.JWT_TOKEN in TwilioProvider.tsx');
-    console.log('3. Set your Twilio phone number in TWILIO_CONFIG.FROM_NUMBER');
-    console.log('4. Set target phone number in TWILIO_CONFIG.TO_NUMBER');
+    
+    // Play ringing sound in demo mode too
+    playRingingSound();
     
     setTimeout(() => {
       console.log('📞 Demo call connected');
+      stopRingingSound();
       setIsConnected(true);
-    }, 2000);
+    }, 3000); // Ring for 3 seconds in demo mode
   };
 
   const endCall = () => {
     console.log('📞 Ending call...');
+    stopRingingSound(); // Stop ringing when ending call
     try {
       if (twilioDevice && isConnected) {
         twilioDevice.disconnectAll();
@@ -337,6 +493,8 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     isReady,
     isConnected,
     isMuted,
+    isRinging,
+    tokenValidation,
     makeCall,
     endCall,
     toggleMute,

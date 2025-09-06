@@ -12,7 +12,7 @@ type CallState = 'idle' | 'calling' | 'connected' | 'ended';
 interface CallInterfaceProps {}
 
 export const CallInterface: React.FC<CallInterfaceProps> = () => {
-  const { device, isReady, isConnected, isMuted, makeCall, endCall, toggleMute, initializationError } = useTwilio();
+  const { device, isReady, isConnected, isMuted, isRinging, tokenValidation, makeCall, endCall, toggleMute, initializationError } = useTwilio();
   const [callState, setCallState] = useState<CallState>('idle');
   const [speakerEnabled, setSpeakerEnabled] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -85,6 +85,25 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
         </motion.div>
       )}
 
+      {/* Token Validation Status */}
+      {tokenValidation && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed top-20 left-4 right-4 z-40 max-w-2xl mx-auto"
+        >
+          <Alert className={`glass text-left ${tokenValidation.isValid ? 'border-success/50 bg-success/10' : 'border-destructive/50 bg-destructive/10'}`}>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              <strong>JWT Token Status:</strong> {tokenValidation.isValid ? '✅ Valid' : '❌ Invalid'}<br/>
+              {tokenValidation.identity && <span><strong>Identity:</strong> {tokenValidation.identity}<br/></span>}
+              {tokenValidation.exp && <span><strong>Expires:</strong> {new Date(tokenValidation.exp * 1000).toLocaleString()}<br/></span>}
+              {tokenValidation.error && <span className="text-destructive"><strong>Error:</strong> {tokenValidation.error}</span>}
+            </AlertDescription>
+          </Alert>
+        </motion.div>
+      )}
+
       {callState === 'idle' && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -105,7 +124,10 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
           
           <h1 className="text-4xl font-bold mb-2 text-shadow">Ready to Connect</h1>
           <p className="text-lg text-muted-foreground mb-4">
-            {isReady ? 'Start your conversation with a single tap' : 'Initializing Twilio...'}
+            {isReady ? 
+              (tokenValidation?.isValid ? 'Ready for live calls!' : 'Demo mode ready') : 
+              'Initializing Twilio...'
+            }
           </p>
           
           {!isReady && !initializationError && (
@@ -118,12 +140,13 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               onClick={handleCall}
-              disabled={false}
+              disabled={!isReady}
               size="lg"
-              className="glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow animate-glow"
+              className={`glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow ${isReady ? 'animate-glow' : 'opacity-50'}`}
             >
               <Phone className="mr-3 h-6 w-6" />
-              {initializationError ? 'Demo Call' : 'Call Me'}
+              {!isReady ? 'Initializing...' : 
+               tokenValidation?.isValid ? 'Call Me' : 'Demo Call'}
             </Button>
           </motion.div>
         </motion.div>
@@ -182,7 +205,9 @@ export const CallInterface: React.FC<CallInterfaceProps> = () => {
                       />
                     </div>
                     <h3 className="text-2xl font-semibold mt-4 text-shadow">Calling...</h3>
-                    <p className="text-muted-foreground">Connecting to your contact</p>
+                    <p className="text-muted-foreground">
+                      {isRinging ? '🔊 Ringing...' : 'Connecting to your contact'}
+                    </p>
                   </motion.div>
                 )}
 
