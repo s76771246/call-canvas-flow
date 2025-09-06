@@ -237,6 +237,12 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
         throw new Error("Please enter a valid JWT token");
       }
 
+      // Additional token validation
+      const validation = validateJWTToken(token);
+      if (!validation.isValid) {
+        throw new Error(`Token validation failed: ${validation.error}`);
+      }
+
       console.log("🎤 Requesting microphone permissions...");
       
       // Request microphone permissions first
@@ -251,6 +257,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       }
 
       console.log('📱 Setting up Twilio Device with token...');
+      console.log('📱 Token identity:', validation.identity);
       
       // Clear any existing error
       setInitializationError(null);
@@ -261,7 +268,8 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       // Setup device with token
       TwilioDevice.setup(token, {
         debug: true, // Enable debug mode for troubleshooting
-        closeProtection: false
+        closeProtection: false,
+        allowIncomingWhileBusy: true
       });
       
       // Store reference
@@ -280,11 +288,14 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
         let errorMessage = `Twilio Error: ${error.message}`;
         
         switch (error.code) {
+          case 20103:
+            errorMessage = "Invalid Access Token issuer/subject. Please check your Twilio Account SID, API Key, and API Secret in your token generation code.";
+            break;
           case 31204:
             errorMessage = "JWT token is invalid or expired. Please generate a new token from Twilio Console.";
             break;
           case 31205:
-            errorMessage = "JWT token signature is invalid. Check your API credentials.";
+            errorMessage = "JWT token signature is invalid. Check your API credentials in your Python token generation code.";
             break;
           case 31206:
             errorMessage = "JWT token is malformed. Please check the token format.";
