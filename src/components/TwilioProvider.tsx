@@ -29,7 +29,7 @@ const validateJWTToken = (token: string): { isValid: boolean; error?: string; id
 
     return { 
       isValid: true, 
-      identity: payload.grants.identity || payload.identity,
+      identity: payload.iss || payload.identity,
       exp: payload.exp 
     };
   } catch (error) {
