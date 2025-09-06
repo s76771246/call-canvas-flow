@@ -44,10 +44,12 @@ interface TwilioContextType {
   isMuted: boolean;
   isRinging: boolean;
   tokenValidation: { isValid: boolean; error?: string; identity?: string; exp?: number } | null;
-  makeCall: (phoneNumber?: string) => void;
+  makeCall: (phoneNumber?: string, token?: string) => void;
   endCall: () => void;
   toggleMute: () => void;
   initializationError: string | null;
+  validateAndSetToken: (token: string) => void;
+  clearError: () => void;
 }
 
 const TwilioContext = createContext<TwilioContextType | undefined>(undefined);
@@ -64,20 +66,11 @@ interface TwilioProviderProps {
   children: React.ReactNode;
 }
 
-// Configuration - YOU MUST UPDATE THESE VALUES
+// Configuration
 const TWILIO_CONFIG = {
-  // ⚠️ IMPORTANT: Replace with your actual JWT token from Twilio Console
-  // Generate a new token at: https://console.twilio.com/develop/voice/manage/access-tokens
-  JWT_TOKEN: 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZS0xNzU3MDUyMzQ1IiwiZ3JhbnRzIjp7InZvaWNlIjp7ImluY29taW5nIjp7ImFsbG93Ijp0cnVlfSwib3V0Z29pbmciOnsiYXBwbGljYXRpb25fc2lkIjoiRUgyYzFiZGVkZjA4MDc2MzgzNmYzM2Q2MGY4MmE2Y2Q5OCJ9fSwiaWRlbnRpdHkiOiJUZXN0IENhbGxtZSJ9LCJpc3MiOiI0ODhlNzcwZjY4MGE3MDVhNDQyNWY0YTk5MTM0NDVjZSIsImV4cCI6MTc1NzA1NTk0NSwibmJmIjoxNzU3MDUyMzQ1LCJzdWIiOiJBQzYxYmU4OWY2MzMzM2I3NDg4NThmOTY3MWZlZWYyNmQ1In0.v3bmD8DyyG3BbEHn36-bVwkGYUg3q-jGjGE2q-toaOQ',
-  
-  // ⚠️ IMPORTANT: Replace with your actual Twilio phone number (format: +1234567890)
+  // Default phone numbers - can be updated via UI
   FROM_NUMBER: '+17408808447',
-  
-  // ⚠️ IMPORTANT: Replace with the phone number you want to call (format: +1234567890)
   TO_NUMBER: '+91 97592 06343',
-  
-  // Optional: Token endpoint URL if you have a backend
-  ACCESS_TOKEN_URL: 'https://your-backend.com/api/twilio/token',
 };
 
 // Global variables to track initialization
@@ -92,7 +85,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [isRinging, setIsRinging] = useState(false);
   const [tokenValidation, setTokenValidation] = useState<{ isValid: boolean; error?: string; identity?: string; exp?: number } | null>(null);
-  const [ringingAudio, setRingingAudio] = useState<HTMLAudioElement | null>(null);
+  const [currentToken, setCurrentToken] = useState<string>('');
 
   // Initialize ringing sound
   useEffect(() => {
@@ -134,54 +127,31 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Check configuration on mount
-  useEffect(() => {
-    const checkConfiguration = () => {
-      // First validate the JWT token
-      const validation = validateJWTToken(TWILIO_CONFIG.JWT_TOKEN);
-      setTokenValidation(validation);
-      
-      const errors = [];
-      
-      if (!validation.isValid) {
-        errors.push(`JWT Token Error: ${validation.error}`);
-      }
-      
-      if (!TWILIO_CONFIG.FROM_NUMBER || TWILIO_CONFIG.FROM_NUMBER === '+1234567890') {
-        errors.push('FROM_NUMBER is not configured');
-      }
-      
-      if (!TWILIO_CONFIG.TO_NUMBER || TWILIO_CONFIG.TO_NUMBER === '+0987654321') {
-        errors.push('TO_NUMBER is not configured');
-      }
-      
-      if (!(window as any).Twilio) {
-        errors.push('Twilio SDK is not loaded');
-      }
-      
-      if (errors.length > 0) {
-        const errorMessage = `🚨 Configuration Issues Found:\n\n${errors.map(e => `• ${e}`).join('\n')}\n\n${validation.isValid ? '✅ JWT Token is valid!' : '❌ Please fix JWT token first'}\n\n🎭 Demo mode will be available in 3 seconds`;
-        setInitializationError(errorMessage);
-        console.error('❌ Twilio Configuration Issues:', errors);
-        return false;
-      }
-      
-      return true;
-    };
+  // Validate token function
+  const validateAndSetToken = (token: string) => {
+    const validation = validateJWTToken(token);
+    setTokenValidation(validation);
+    setCurrentToken(token);
     
-    checkConfiguration();
-  }, []);
-
-  // Set demo mode after a short delay if configuration is missing
-  useEffect(() => {
-    if (initializationError) {
-      const timer = setTimeout(() => {
-        console.log('🎭 Enabling demo mode...');
-        setIsReady(true); // Enable demo mode
-      }, 3000);
-      return () => clearTimeout(timer);
+    if (!validation.isValid) {
+      setInitializationError(`Token Error: ${validation.error}`);
+    } else {
+      setInitializationError(null);
     }
-  }, [initializationError]);
+    
+    return validation.isValid;
+  };
+
+  const clearError = () => {
+    setInitializationError(null);
+  };
+
+  // Check if Twilio SDK is loaded on mount
+  useEffect(() => {
+    if (!(window as any).Twilio) {
+      setInitializationError('Twilio SDK is not loaded. Please check your internet connection.');
+    }
+  }, []);
 
   // Play ringing sound
   const playRingingSound = () => {
@@ -248,7 +218,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     }
   };
   // Initialize Twilio Device
-  const initializeTwilioDevice = async (): Promise<any> => {
+  const initializeTwilioDevice = async (token: string): Promise<any> => {
     if (twilioInitialized && twilioDevice) {
       console.log('✅ Twilio already initialized');
       return twilioDevice;
@@ -259,12 +229,12 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       
       // Check if Twilio SDK is loaded
       if (!(window as any).Twilio) {
-        throw new Error("Twilio JS SDK not loaded. Make sure the script tag is in your HTML.");
+        throw new Error("Twilio JS SDK not loaded. Please check your internet connection.");
       }
 
-      // Check configuration
-      if (!TWILIO_CONFIG.JWT_TOKEN || TWILIO_CONFIG.JWT_TOKEN === 'PASTE_YOUR_GENERATED_JWT_TOKEN_HERE') {
-        throw new Error("JWT Token not configured. Please update TWILIO_CONFIG.JWT_TOKEN");
+      // Validate token
+      if (!token || token.trim() === '') {
+        throw new Error("Please enter a valid JWT token");
       }
 
       console.log("🎤 Requesting microphone permissions...");
@@ -289,7 +259,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       const TwilioDevice = (window as any).Twilio.Device;
       
       // Setup device with token
-      TwilioDevice.setup(TWILIO_CONFIG.JWT_TOKEN, {
+      TwilioDevice.setup(token, {
         debug: true, // Enable debug mode for troubleshooting
         closeProtection: false
       });
@@ -359,26 +329,33 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     }
   };
 
-  const makeCall = async (phoneNumber?: string) => {
+  const makeCall = async (phoneNumber?: string, token?: string) => {
     try {
       console.log('📞 Starting call process...');
+      
+      const useToken = token || currentToken;
+      
+      // Validate token first
+      if (!useToken || useToken.trim() === '') {
+        setInitializationError('Please enter a JWT token before making a call');
+        return;
+      }
+      
+      const validation = validateJWTToken(useToken);
+      if (!validation.isValid) {
+        setInitializationError(`Token Error: ${validation.error}`);
+        return;
+      }
       
       // Start ringing sound immediately
       playRingingSound();
       
-      // Check if we have configuration issues
-      if (initializationError) {
-        console.error('❌ Cannot make call due to configuration issues:', initializationError);
-        alert(`Cannot make call:\n${initializationError}\n\nPlease check the console for setup instructions.`);
-        return;
-      }
-      
       // Initialize Twilio if not already done
-      const currentDevice = twilioDevice || await initializeTwilioDevice();
+      const currentDevice = twilioDevice || await initializeTwilioDevice(useToken);
       
       if (!currentDevice) {
         console.error('❌ Failed to initialize Twilio device');
-        simulateCall();
+        stopRingingSound();
         return;
       }
       
@@ -411,7 +388,8 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       
     } catch (error) {
       console.error('❌ Failed to make call:', error);
-      simulateCall();
+      stopRingingSound();
+      setInitializationError(`Call failed: ${error.message}`);
     }
   };
 
@@ -421,9 +399,7 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       console.log('📞 Making call to:', targetNumber);
       
       if (!targetNumber || targetNumber === '+0987654321') {
-        console.warn('⚠️ Target phone number not configured, using demo mode');
-        simulateCall();
-        return;
+        throw new Error('Target phone number not configured');
       }
       
       // Make the actual call
@@ -437,22 +413,9 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       
     } catch (error) {
       console.error('❌ Error making call:', error);
-      simulateCall();
-    }
-  };
-
-  // Demo mode simulation for when Twilio is not properly configured
-  const simulateCall = () => {
-    console.log('🎭 Running in demo mode (no actual call will be made)...');
-    
-    // Play ringing sound in demo mode too
-    playRingingSound();
-    
-    setTimeout(() => {
-      console.log('📞 Demo call connected');
       stopRingingSound();
-      setIsConnected(true);
-    }, 3000); // Ring for 3 seconds in demo mode
+      throw error;
+    }
   };
 
   const endCall = () => {
@@ -499,6 +462,8 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
     endCall,
     toggleMute,
     initializationError,
+    validateAndSetToken,
+    clearError,
   };
 
   return (

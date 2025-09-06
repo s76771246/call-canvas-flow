@@ -1,321 +1,178 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useTwilio } from '@/components/TwilioProvider';
-import avatar from '@/assets/avatar.jpg';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, PhoneOff, Mic, MicOff, AlertCircle } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useTwilio } from './TwilioProvider';
 
-type CallState = 'idle' | 'calling' | 'connected' | 'ended';
+export const CallInterface = () => {
+  const { 
+    isConnected, 
+    isMuted, 
+    isRinging, 
+    makeCall, 
+    endCall, 
+    toggleMute,
+    initializationError,
+    tokenValidation,
+    validateAndSetToken,
+    clearError
+  } = useTwilio();
 
-interface CallInterfaceProps {}
+  const [token, setToken] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('+91 97592 06343');
 
-export const CallInterface: React.FC<CallInterfaceProps> = () => {
-  const { device, isReady, isConnected, isMuted, isRinging, tokenValidation, makeCall, endCall, toggleMute, initializationError } = useTwilio();
-  const [callState, setCallState] = useState<CallState>('idle');
-  const [speakerEnabled, setSpeakerEnabled] = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
-
-  // Sync callState with Twilio connection status
-  useEffect(() => {
-    if (isConnected && callState !== 'connected') {
-      setCallState('connected');
-      setCallDuration(0); // Reset timer when call connects
-    } else if (!isConnected && callState === 'connected') {
-      setCallState('ended');
-      setTimeout(() => setCallState('idle'), 1000);
+  const handleTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newToken = e.target.value;
+    setToken(newToken);
+    if (initializationError) {
+      clearError();
     }
-  }, [isConnected, callState]);
-
-  // Timer only runs when actually connected
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isConnected && callState === 'connected') {
-      interval = setInterval(() => {
-        setCallDuration(prev => prev + 1);
-      }, 1000);
+    if (newToken.trim()) {
+      validateAndSetToken(newToken);
     }
-    return () => clearInterval(interval);
-  }, [isConnected, callState]);
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleCall = () => {
-    console.log('📞 Call button clicked');
-    setCallState('calling');
-    // makeCall will now handle initialization internally
-    makeCall();
+  const handleCallClick = () => {
+    if (!token.trim()) {
+      validateAndSetToken('');
+      return;
+    }
+    makeCall(phoneNumber, token);
   };
 
-  const handleEndCall = () => {
-    endCall();
-    setCallDuration(0);
-  };
-
-  const handleMute = () => {
-    toggleMute();
-  };
-
-  const handleSpeaker = () => {
-    setSpeakerEnabled(!speakerEnabled);
-    // Note: Speaker functionality would need additional Twilio configuration
-    console.log('Speaker toggled:', !speakerEnabled);
-  };
+  const isTokenValid = tokenValidation?.isValid;
+  const canMakeCall = isTokenValid && !isConnected && !isRinging;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      {/* Configuration Error Alert */}
-      {initializationError && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed top-4 left-4 right-4 z-50 max-w-4xl mx-auto"
-        >
-          <Alert className="glass border-primary/50 bg-primary/10 text-left">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="whitespace-pre-line text-sm leading-relaxed">
-              {initializationError}
-            </AlertDescription>
-          </Alert>
-        </motion.div>
-      )}
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardContent className="p-8">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold mb-2">Voice Call Demo</h1>
+            <p className="text-muted-foreground">
+              Enter your Twilio JWT token to make calls
+            </p>
+          </div>
 
-      {/* Token Validation Status */}
-      {tokenValidation && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed top-20 left-4 right-4 z-40 max-w-2xl mx-auto"
-        >
-          <Alert className={`glass text-left ${tokenValidation.isValid ? 'border-success/50 bg-success/10' : 'border-destructive/50 bg-destructive/10'}`}>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              <strong>JWT Token Status:</strong> {tokenValidation.isValid ? '✅ Valid' : '❌ Invalid'}<br/>
-              {tokenValidation.identity && <span><strong>Identity:</strong> {tokenValidation.identity}<br/></span>}
-              {tokenValidation.exp && <span><strong>Expires:</strong> {new Date(tokenValidation.exp * 1000).toLocaleString()}<br/></span>}
-              {tokenValidation.error && <span className="text-destructive"><strong>Error:</strong> {tokenValidation.error}</span>}
-            </AlertDescription>
-          </Alert>
-        </motion.div>
-      )}
-
-      {callState === 'idle' && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            className="mb-8"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <img
-              src={avatar}
-              alt="Contact"
-              className="w-32 h-32 rounded-full mx-auto mb-4 shadow-glow ring-4 ring-primary/20"
-            />
-          </motion.div>
-          
-          <h1 className="text-4xl font-bold mb-2 text-shadow">Ready to Connect</h1>
-          <p className="text-lg text-muted-foreground mb-4">
-            {isReady ? 
-              (tokenValidation?.isValid ? 'Ready for live calls!' : 'Demo mode ready') : 
-              'Initializing Twilio...'
-            }
-          </p>
-          
-          {!isReady && !initializationError && (
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <span className="ml-2 text-sm text-muted-foreground">Setting up voice connection...</span>
-            </div>
-          )}
-          
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              onClick={handleCall}
-              disabled={!isReady}
-              size="lg"
-              className={`glass glass-hover gradient-primary text-white font-semibold px-8 py-6 text-lg rounded-2xl shadow-glow ${isReady ? 'animate-glow' : 'opacity-50'}`}
-            >
-              <Phone className="mr-3 h-6 w-6" />
-              {!isReady ? 'Initializing...' : 
-               tokenValidation?.isValid ? 'Call Me' : 'Demo Call'}
-            </Button>
-          </motion.div>
-        </motion.div>
-      )}
-
-      <AnimatePresence>
-        {(callState === 'calling' || callState === 'connected' || callState === 'ended') && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              className="glass rounded-3xl p-8 w-full max-w-md text-center relative overflow-hidden"
-            >
-              {/* Background Animation */}
-              <motion.div
-                className="absolute inset-0 gradient-calling opacity-30"
-                animate={{
-                  background: [
-                    'linear-gradient(135deg, hsl(263 70% 50% / 0.3), hsl(280 70% 60% / 0.3))',
-                    'linear-gradient(135deg, hsl(280 70% 60% / 0.3), hsl(300 70% 50% / 0.3))',
-                    'linear-gradient(135deg, hsl(263 70% 50% / 0.3), hsl(280 70% 60% / 0.3))'
-                  ]
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
+          <div className="space-y-6">
+            {/* Token Input */}
+            <div className="space-y-2">
+              <Label htmlFor="token">Twilio JWT Token</Label>
+              <Input
+                id="token"
+                type="password"
+                placeholder="Enter your JWT token..."
+                value={token}
+                onChange={handleTokenChange}
+                className={`${tokenValidation && !tokenValidation.isValid ? 'border-destructive' : ''} ${isTokenValid ? 'border-green-500' : ''}`}
               />
-              
-              <div className="relative z-10">
-                {callState === 'calling' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                  >
-                    <div className="relative inline-block">
-                      <img
-                        src={avatar}
-                        alt="Calling"
-                        className="w-24 h-24 rounded-full mx-auto shadow-glow"
-                      />
-                      {/* Pulse rings */}
-                      <motion.div
-                        className="absolute inset-0 rounded-full border-2 border-primary/50"
-                        animate={{ scale: [1, 1.5], opacity: [1, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
-                      <motion.div
-                        className="absolute inset-0 rounded-full border-2 border-primary/30"
-                        animate={{ scale: [1, 1.8], opacity: [1, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                      />
-                    </div>
-                    <h3 className="text-2xl font-semibold mt-4 text-shadow">Calling...</h3>
-                    <p className="text-muted-foreground">
-                      {isRinging ? '🔊 Ringing...' : 'Connecting to your contact'}
-                    </p>
-                  </motion.div>
-                )}
+              {tokenValidation && (
+                <div className={`flex items-center space-x-2 text-sm ${isTokenValid ? 'text-green-600' : 'text-destructive'}`}>
+                  <AlertCircle className="h-4 w-4" />
+                  <span>
+                    {isTokenValid 
+                      ? `✓ Valid token for ${tokenValidation.identity}` 
+                      : tokenValidation.error
+                    }
+                  </span>
+                </div>
+              )}
+            </div>
 
-                {callState === 'connected' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                  >
-                    <motion.img
-                      src={avatar}
-                      alt="Connected"
-                      className="w-24 h-24 rounded-full mx-auto shadow-glow mb-4"
-                      animate={{ scale: [1, 1.05, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                    <h3 className="text-2xl font-semibold text-shadow">Connected</h3>
-                    <motion.p
-                      className="text-primary font-mono text-lg"
-                      key={callDuration}
-                      initial={{ scale: 1.1 }}
-                      animate={{ scale: 1 }}
-                    >
-                      {formatDuration(callDuration)}
-                    </motion.p>
-                  </motion.div>
-                )}
+            {/* Phone Number Input */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number to Call</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1234567890"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+            </div>
 
-                {callState === 'ended' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                  >
-                    <img
-                      src={avatar}
-                      alt="Call Ended"
-                      className="w-24 h-24 rounded-full mx-auto shadow-soft opacity-60 mb-4"
-                    />
-                    <h3 className="text-2xl font-semibold text-shadow">Call Ended</h3>
-                    <p className="text-muted-foreground">Thanks for connecting</p>
-                  </motion.div>
-                )}
-
-                {/* Call Controls */}
-                {callState === 'connected' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="flex justify-center space-x-4"
-                  >
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleMute}
-                      className={`glass glass-hover p-4 rounded-full ${
-                        isMuted ? 'bg-destructive/20 border-destructive/30' : ''
-                      }`}
-                    >
-                      {isMuted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
-                    </motion.button>
-
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleSpeaker}
-                      className={`glass glass-hover p-4 rounded-full ${
-                        speakerEnabled ? 'bg-primary/20 border-primary/30' : ''
-                      }`}
-                    >
-                      {speakerEnabled ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
-                    </motion.button>
-
-
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleEndCall}
-                      className="bg-destructive/20 border-destructive/30 glass p-4 rounded-full hover:bg-destructive/30"
-                    >
-                      <PhoneOff className="h-6 w-6 text-destructive" />
-                    </motion.button>
-                  </motion.div>
-                )}
-
-                {callState === 'calling' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="flex justify-center"
-                  >
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleEndCall}
-                      className="bg-destructive/20 border-destructive/30 glass p-4 rounded-full hover:bg-destructive/30"
-                    >
-                      <PhoneOff className="h-6 w-6 text-destructive" />
-                    </motion.button>
-                  </motion.div>
-                )}
+            {/* Error Display */}
+            {initializationError && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-destructive">
+                    {initializationError}
+                  </p>
+                </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+
+            {/* Call Interface */}
+            {!isConnected && !isRinging ? (
+              <Button
+                onClick={handleCallClick}
+                disabled={!canMakeCall}
+                size="lg"
+                className="w-full h-16 text-lg font-semibold"
+                variant={canMakeCall ? "default" : "secondary"}
+              >
+                <Phone className="mr-2 h-6 w-6" />
+                {canMakeCall ? 'Call Now' : 'Enter Valid Token'}
+              </Button>
+            ) : isRinging ? (
+              <div className="space-y-4 text-center">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-pulse">
+                    <Phone className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <span className="text-lg font-medium">Calling...</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Connecting to {phoneNumber}
+                </p>
+                <Button
+                  onClick={endCall}
+                  variant="destructive"
+                  size="lg"
+                  className="w-full h-12"
+                >
+                  <PhoneOff className="mr-2 h-5 w-5" />
+                  End Call
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-center">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-lg font-medium text-green-600">Connected</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Call active with {phoneNumber}
+                </p>
+                
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={toggleMute}
+                    variant={isMuted ? "destructive" : "outline"}
+                    size="lg"
+                    className="flex-1"
+                  >
+                    {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </Button>
+                  
+                  <Button
+                    onClick={endCall}
+                    variant="destructive"
+                    size="lg"
+                    className="flex-1"
+                  >
+                    <PhoneOff className="mr-2 h-5 w-5" />
+                    End Call
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
