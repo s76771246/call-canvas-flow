@@ -26,23 +26,36 @@ export const CallInterface = () => {
   const handleTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newToken = e.target.value;
     setToken(newToken);
-    if (initializationError) {
-      clearError();
-    }
+    
+    // Clear any existing errors
+    clearError();
+    
+    // Validate token if not empty
     if (newToken.trim()) {
       validateAndSetToken(newToken);
+    } else {
+      // Clear validation if token is empty
+      validateAndSetToken('');
     }
   };
 
   const handleCallClick = () => {
-    if (!token.trim()) {
+    const trimmedToken = token.trim();
+    
+    if (!trimmedToken) {
+      // Show error for empty token
       validateAndSetToken('');
       return;
     }
-    makeCall(phoneNumber, token);
+    
+    // Validate token one more time before making call
+    const isValid = validateAndSetToken(trimmedToken);
+    if (isValid) {
+      makeCall(phoneNumber, trimmedToken);
+    }
   };
 
-  const isTokenValid = tokenValidation?.isValid;
+  const isTokenValid = tokenValidation?.isValid === true;
   const canMakeCall = isTokenValid && !isConnected && !isRinging;
 
   return (
@@ -66,17 +79,17 @@ export const CallInterface = () => {
                 placeholder="Enter your JWT token..."
                 value={token}
                 onChange={handleTokenChange}
-                className={`${tokenValidation && !tokenValidation.isValid ? 'border-destructive' : ''} ${isTokenValid ? 'border-green-500' : ''}`}
+                className={`${tokenValidation && !isTokenValid ? 'border-destructive' : ''} ${isTokenValid ? 'border-green-500' : ''}`}
               />
               {tokenValidation && (
-                <div className={`flex items-center space-x-2 text-sm ${isTokenValid ? 'text-green-600' : 'text-destructive'}`}>
+                <div className={`flex items-start space-x-2 text-sm ${isTokenValid ? 'text-green-600' : 'text-destructive'}`}>
                   <AlertCircle className="h-4 w-4" />
-                  <span>
+                  <div>
                     {isTokenValid 
                       ? `✓ Valid token for ${tokenValidation.identity}` 
                       : tokenValidation.error
                     }
-                  </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -109,13 +122,13 @@ export const CallInterface = () => {
             {!isConnected && !isRinging ? (
               <Button
                 onClick={handleCallClick}
-                disabled={!canMakeCall}
+                disabled={false}
                 size="lg"
                 className="w-full h-16 text-lg font-semibold"
-                variant={canMakeCall ? "default" : "secondary"}
+                variant={isTokenValid ? "default" : "secondary"}
               >
                 <Phone className="mr-2 h-6 w-6" />
-                {canMakeCall ? 'Call Now' : 'Enter Valid Token'}
+                {isTokenValid ? 'Call Me' : (token.trim() ? 'Invalid Token' : 'Enter Valid Token')}
               </Button>
             ) : isRinging ? (
               <div className="space-y-4 text-center">

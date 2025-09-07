@@ -13,8 +13,18 @@ const validateJWTToken = (token: string): { isValid: boolean; error?: string; id
       return { isValid: false, error: 'Invalid JWT format - should have 3 parts separated by dots' };
     }
 
-    // Decode payload
-    const payload = JSON.parse(atob(parts[1]));
+    // Decode payload with proper base64 padding
+    let payload;
+    try {
+      // Add padding if needed
+      let base64 = parts[1];
+      while (base64.length % 4) {
+        base64 += '=';
+      }
+      payload = JSON.parse(atob(base64));
+    } catch (decodeError) {
+      return { isValid: false, error: 'Failed to decode JWT payload' };
+    }
     
     // Check expiration
     const now = Math.floor(Date.now() / 1000);
@@ -22,18 +32,18 @@ const validateJWTToken = (token: string): { isValid: boolean; error?: string; id
       return { isValid: false, error: 'Token has expired' };
     }
 
-    // Check if it's a Twilio token
-    if (!payload.grants || !payload.grants.voice) {
-      return { isValid: false, error: 'Token does not contain voice grants' };
+    // Check if it's a Twilio token (more flexible check)
+    if (!payload.grants) {
+      return { isValid: false, error: 'Token does not contain grants' };
     }
 
     return { 
       isValid: true, 
-      identity: payload.iss || payload.identity,
+      identity: payload.sub || payload.identity || 'Unknown',
       exp: payload.exp 
     };
   } catch (error) {
-    return { isValid: false, error: 'Failed to parse JWT token' };
+    return { isValid: false, error: `Failed to parse JWT token: ${error.message}` };
   }
 };
 
