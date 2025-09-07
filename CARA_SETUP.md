@@ -13,7 +13,16 @@
    - Auth Token
    - Your Twilio Phone Number
 
-## Step 2: Generate Access Token
+## Step 2: Create TwiML Application
+
+1. Go to [Twilio Console > Develop > TwiML > TwiML Apps](https://console.twilio.com/develop/twiml/twiml-apps)
+2. Click "Create new TwiML App"
+3. Set these webhooks:
+   - **Voice URL**: `https://your-backend.com/api/twilio/voice` (or use the example below)
+   - **Voice Method**: POST
+4. Save and copy the **TwiML App SID**
+
+## Step 3: Generate Access Token
 
 ### Option A: Quick Test (Temporary Token)
 1. Go to [Twilio Console > Voice > Manage > Access Tokens](https://console.twilio.com/develop/voice/manage/access-tokens)

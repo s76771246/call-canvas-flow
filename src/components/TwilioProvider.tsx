@@ -68,9 +68,10 @@ interface TwilioProviderProps {
 
 // Configuration
 const TWILIO_CONFIG = {
-  // Default phone numbers - can be updated via UI
+  // Your Twilio phone number
   FROM_NUMBER: '+17408808447',
-  TO_NUMBER: '+91 97592 06343',
+  // Default target number - can be updated via UI
+  TO_NUMBER: '+919759206343',
 };
 
 // Global variables to track initialization
