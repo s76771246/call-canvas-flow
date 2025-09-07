@@ -270,6 +270,14 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
       console.log('📱 Setting up Twilio Device with token...');
       console.log('📱 Token identity:', validation.identity);
       
+      // Add token debugging
+      console.log('🔍 Token debugging info:');
+      const tokenParts = token.split('.');
+      const payload = JSON.parse(atob(tokenParts[1]));
+      console.log('📊 Token Account SID (iss):', payload.iss);
+      console.log('📊 Token API Key (sub):', payload.sub);
+      console.log('📊 Token grants:', payload.grants);
+      
       // Clear any existing error
       setInitializationError(null);
       
@@ -302,13 +310,14 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
         
         switch (error.code) {
           case 20103:
-            errorMessage = "❌ REAL ISSUE: Your Twilio credentials are wrong!\n\n" +
-                         "The Account SID in your token doesn't match your API Key credentials. " +
-                         "Double-check these values in your Python code:\n" +
-                         "• TWILIO_ACCOUNT_SID (starts with AC...)\n" +
-                         "• TWILIO_API_KEY (starts with SK...)\n" +
-                         "• TWILIO_API_SECRET\n\n" +
-                         "Make sure they're from the SAME Twilio account!";
+            errorMessage = "❌ CREDENTIAL MISMATCH DETECTED!\n\n" +
+                         "Your API Key belongs to a DIFFERENT Twilio account than your Account SID.\n\n" +
+                         "🔍 CHECK YOUR PYTHON CODE:\n" +
+                         "1. Log into Twilio Console\n" +
+                         "2. Go to Account → API Keys & Tokens\n" +
+                         "3. Make sure your API Key (SK...) was created in the SAME account as your Account SID (AC...)\n" +
+                         "4. If using subaccounts, use the subaccount's Account SID\n\n" +
+                         "💡 TIP: Create a new API Key in the correct account!";
             break;
           case 31204:
             errorMessage = "❌ JWT token is invalid or expired. Generate a new token with correct credentials.";

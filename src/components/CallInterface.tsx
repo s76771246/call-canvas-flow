@@ -63,7 +63,7 @@ export const CallInterface = () => {
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="p-8">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Voice Call Demo</h1>
+            <h1 className="text-3xl font-bold mb-2">CARA</h1>
             <p className="text-muted-foreground">
               Enter your Twilio JWT token to make calls
             </p>
