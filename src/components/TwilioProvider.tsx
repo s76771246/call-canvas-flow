@@ -296,30 +296,42 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
 
       TwilioDevice.error((error: any) => {
         console.error("❌ Twilio Device Error:", error);
+        stopRingingSound(); // Stop ringing on error
+        
         let errorMessage = `Twilio Error: ${error.message}`;
         
         switch (error.code) {
           case 20103:
-            errorMessage = "Invalid Access Token issuer/subject. Please check your Twilio Account SID, API Key, and API Secret in your token generation code.";
+            errorMessage = "❌ REAL ISSUE: Your Twilio credentials are wrong!\n\n" +
+                         "The Account SID in your token doesn't match your API Key credentials. " +
+                         "Double-check these values in your Python code:\n" +
+                         "• TWILIO_ACCOUNT_SID (starts with AC...)\n" +
+                         "• TWILIO_API_KEY (starts with SK...)\n" +
+                         "• TWILIO_API_SECRET\n\n" +
+                         "Make sure they're from the SAME Twilio account!";
             break;
           case 31204:
-            errorMessage = "JWT token is invalid or expired. Please generate a new token from Twilio Console.";
+            errorMessage = "❌ JWT token is invalid or expired. Generate a new token with correct credentials.";
             break;
           case 31205:
-            errorMessage = "JWT token signature is invalid. Check your API credentials in your Python token generation code.";
+            errorMessage = "❌ JWT token signature is invalid. Your TWILIO_API_SECRET is wrong in your Python code.";
             break;
           case 31206:
-            errorMessage = "JWT token is malformed. Please check the token format.";
+            errorMessage = "❌ JWT token is malformed. Check your token format.";
             break;
           case 53000:
-            errorMessage = "Microphone access denied. Please allow microphone access and refresh.";
+            errorMessage = "❌ Microphone access denied. Please allow microphone access and refresh.";
+            break;
+          case 31201:
+            errorMessage = "❌ Invalid API Key. Your TWILIO_API_KEY in Python code is wrong or doesn't exist.";
             break;
           default:
-            errorMessage = `Twilio Error (${error.code}): ${error.message}`;
+            errorMessage = `❌ Twilio Error (${error.code}): ${error.message}\n\nThis usually means credential mismatch.`;
         }
         
         setInitializationError(errorMessage);
         setIsReady(false);
+        setIsConnected(false);
       });
 
       TwilioDevice.connect((conn: any) => {

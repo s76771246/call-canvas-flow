@@ -111,9 +111,9 @@ export const CallInterface = () => {
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <div className="flex items-start space-x-2">
                   <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-destructive">
+                  <div className="text-sm text-destructive whitespace-pre-line">
                     {initializationError}
-                  </p>
+                  </div>
                 </div>
               </div>
             )}
