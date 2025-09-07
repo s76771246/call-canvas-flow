@@ -49,8 +49,8 @@ export const CallInterface = () => {
     }
     
     // Validate token one more time before making call
-    const isValid = validateAndSetToken(trimmedToken);
-    if (isValid) {
+    validateAndSetToken(trimmedToken);
+    if (isTokenValid) {
       makeCall(phoneNumber, trimmedToken);
     }
   };
