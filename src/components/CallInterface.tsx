@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Phone, PhoneOff, Mic, MicOff, AlertCircle, Clock } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,35 @@ export const CallInterface = () => {
 
   const [token, setToken] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('+919759206343');
+  const [callDuration, setCallDuration] = useState(0);
+
+  // Call timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isConnected) {
+      setCallDuration(0);
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      setCallDuration(0);
+      if (interval) {
+        clearInterval(interval);
+      }
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isConnected]);
+
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newToken = e.target.value;
@@ -119,44 +148,20 @@ export const CallInterface = () => {
             )}
 
             {/* Call Interface */}
-            {!isConnected && !isRinging ? (
-              <Button
-                onClick={handleCallClick}
-                disabled={false}
-                size="lg"
-                className="w-full h-16 text-lg font-semibold"
-                variant={isTokenValid ? "default" : "secondary"}
-              >
-                <Phone className="mr-2 h-6 w-6" />
-                {isTokenValid ? 'Call Me' : (token.trim() ? 'Invalid Token' : 'Enter Valid Token')}
-              </Button>
-            ) : isRinging ? (
-              <div className="space-y-4 text-center">
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-pulse">
-                    <Phone className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <span className="text-lg font-medium">Calling...</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Connecting to {phoneNumber}
-                </p>
-                <Button
-                  onClick={endCall}
-                  variant="destructive"
-                  size="lg"
-                  className="w-full h-12"
-                >
-                  <PhoneOff className="mr-2 h-5 w-5" />
-                  End Call
-                </Button>
-              </div>
-            ) : (
+            {isConnected ? (
+              /* CONNECTED STATE - Always show this when connected */
               <div className="space-y-4 text-center">
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-lg font-medium text-green-600">Connected</span>
                 </div>
+                
+                {/* Call Timer */}
+                <div className="flex items-center justify-center space-x-2 text-2xl font-mono font-bold text-primary">
+                  <Clock className="h-6 w-6" />
+                  <span>{formatDuration(callDuration)}</span>
+                </div>
+                
                 <p className="text-sm text-muted-foreground">
                   Call active with {phoneNumber}
                 </p>
@@ -182,6 +187,40 @@ export const CallInterface = () => {
                   </Button>
                 </div>
               </div>
+            ) : isRinging ? (
+              /* CALLING STATE */
+              <div className="space-y-4 text-center">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-pulse">
+                    <Phone className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <span className="text-lg font-medium">Calling...</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Connecting to {phoneNumber}
+                </p>
+                <Button
+                  onClick={endCall}
+                  variant="destructive"
+                  size="lg"
+                  className="w-full h-12"
+                >
+                  <PhoneOff className="mr-2 h-5 w-5" />
+                  End Call
+                </Button>
+              </div>
+            ) : (
+              /* IDLE STATE - Ready to call */
+              <Button
+                onClick={handleCallClick}
+                disabled={false}
+                size="lg"
+                className="w-full h-16 text-lg font-semibold"
+                variant={isTokenValid ? "default" : "secondary"}
+              >
+                <Phone className="mr-2 h-6 w-6" />
+                {isTokenValid ? 'Call Me' : (token.trim() ? 'Invalid Token' : 'Enter Valid Token')}
+              </Button>
             )}
           </div>
         </CardContent>
