@@ -148,10 +148,6 @@ export const CallInterface = () => {
             )}
 
             {/* Call Interface */}
-            {(() => {
-              console.log("CallInterface render states:", { isConnected, isRinging, isTokenValid });
-              return null;
-            })()}
             {isConnected ? (
               /* CONNECTED STATE - Always show this when connected */
               <div className="space-y-4 text-center">
