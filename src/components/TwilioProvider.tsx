@@ -347,14 +347,18 @@ export const TwilioProvider: React.FC<TwilioProviderProps> = ({ children }) => {
         console.log("📞 Call connected successfully");
         console.log("Connection details:", conn);
         stopRingingSound(); // Stop ringing when connected
+        setIsRinging(false); // Ensure ringing state is false
         setIsConnected(true);
+        console.log("✅ UI state updated - isConnected: true, isRinging: false");
       });
 
       TwilioDevice.disconnect((conn: any) => {
         console.log("📞 Call disconnected");
         stopRingingSound(); // Stop ringing when disconnected
+        setIsRinging(false); // Ensure ringing state is false
         setIsConnected(false);
         setIsMuted(false);
+        console.log("✅ UI state updated - isConnected: false, isRinging: false");
       });
 
       TwilioDevice.incoming((conn: any) => {
