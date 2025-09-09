@@ -1,8 +1,8 @@
 // Required credentials - UPDATE THESE VALUES WITH YOUR TWILIO CREDENTIALS
 const TWILIO_CONFIG = {
-  account_sid: "ff",  // Replace with your Account SID
-  api_key_sid: "ff",  // Replace with your API Key SID  
-  api_key_secret: "ff",  // Replace with your API Secret
+  account_sid: "AC61be89f63333b748858f9671feef26d5",  // Replace with your Account SID
+  api_key_sid: "SK1f80046aafe5ba42d3230b7d00c8e11f",  // Replace with your API Key SID  
+  api_key_secret: "kjc3hdMZ3zf1CwJZReAStBZQZHkMIV1w",  // Replace with your API Secret
   twiml_app_sid: "ff"  // Replace with your TwiML App SID
 };
 
