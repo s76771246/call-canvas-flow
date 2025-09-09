@@ -1,32 +1,28 @@
-import os
-from dotenv import load_dotenv
+import time
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 
-# Load credentials from .env file
-load_dotenv()
+# Required credentials - UPDATE THESE VALUES WITH YOUR TWILIO CREDENTIALS
+account_sid = "ff"  # Replace with your Account SID
+api_key_sid = "ff"  # Replace with your API Key SID  
+api_key_secret = "ff"  # Replace with your API Secret
+twiml_app_sid = "ff"  # Replace with your TwiML App SID
 
-# REPLACE THESE WITH YOUR REAL TWILIO CREDENTIALS
-TWILIO_ACCOUNT_SID = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Your Account SID from Twilio Console
-TWILIO_API_KEY = "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"      # Create API Key in Twilio Console
-TWILIO_API_SECRET = "your_api_secret_here"                  # API Secret from Twilio Console
-TWIML_APP_SID = "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"       # TwiML App SID (create in Console)
+# Identity for the browser user (no spaces, only alphanumeric + underscore)
+identity = "user_123"
 
-# Identity of the user (can be anything unique per user)
-identity = "TestUser_" + str(int(time.time()))
-
-# Create access token with credentials
+# Create the access token
 token = AccessToken(
-    TWILIO_ACCOUNT_SID,
-    TWILIO_API_KEY,
-    TWILIO_API_SECRET,
+    account_sid,
+    api_key_sid,
+    api_key_secret,
     identity=identity,
-    ttl=3600  # 1 hour expiry
+    ttl=3600  # token valid for 1 hour
 )
 
-# Add voice grant with your TwiML App SID
+# Attach VoiceGrant
 voice_grant = VoiceGrant(
-    outgoing_application_sid=TWIML_APP_SID,
+    outgoing_application_sid=twiml_app_sid,
     incoming_allow=True
 )
 token.add_grant(voice_grant)
