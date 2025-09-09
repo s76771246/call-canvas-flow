@@ -12,7 +12,7 @@ export const generateTwilioToken = async (): Promise<string> => {
     const jwtToken: string = "PASTE_YOUR_JWT_TOKEN_HERE";
     
     // Validation
-    if (!jwtToken || jwtToken === "PASTE_YOUR_JWT_TOKEN_HERE") {
+    if (!jwtToken || jwtToken === "eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiJTSzFmODAwNDZhYWZlNWJhNDJkMzIzMGI3ZDAwYzhlMTFmLTE3NTc0MDEzMTgiLCJncmFudHMiOnsidm9pY2UiOnsiaW5jb21pbmciOnsiYWxsb3ciOnRydWV9LCJvdXRnb2luZyI6eyJhcHBsaWNhdGlvbl9zaWQiOiJBUGE1ZmVlODkyYWM5OGZkZmI4ZmQ4ZDBiYTRlYjA3YjRhIn19LCJpZGVudGl0eSI6InVzZXJfMTIzIn0sImlzcyI6IlNLMWY4MDA0NmFhZmU1YmE0MmQzMjMwYjdkMDBjOGUxMWYiLCJleHAiOjE3NTc0MDQ5MTgsIm5iZiI6MTc1NzQwMTMxOCwic3ViIjoiQUM2MWJlODlmNjMzMzNiNzQ4ODU4Zjk2NzFmZWVmMjZkNSJ9.9WsiabIUEo2IOuMTPmiqENwOzmk-2-i4tq01eTi_Ufg") {
       throw new Error(`🔑 JWT Token Required!\n\nTo fix this:\n1. Update your credentials in twilio_token_generator.py\n2. Run: python twilio_token_generator.py\n3. Copy the generated JWT token\n4. Paste it in src/lib/twilioTokenGenerator.ts\n5. Save and refresh the page`);
     }
 
