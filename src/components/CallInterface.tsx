@@ -89,6 +89,14 @@ export const CallInterface = () => {
                   <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-destructive whitespace-pre-line">
                     {initializationError}
+                    {initializationError.includes('JWT token') && (
+                      <div className="mt-2 text-xs">
+                        <p>To fix this:</p>
+                        <p>1. Run your Python backend code to generate a JWT token</p>
+                        <p>2. Paste the token in src/lib/twilioTokenGenerator.ts</p>
+                        <p>3. Or set up a backend endpoint at /api/twilio/token</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
