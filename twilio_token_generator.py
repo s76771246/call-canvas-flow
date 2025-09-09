@@ -2,8 +2,8 @@ from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 
 # Required credentials - REPLACE THESE VALUES WITH YOUR ACTUAL TWILIO CREDENTIALS
-account_sid = "ff"  # Replace with your Account SID
-api_key_sid = "ff"  # Replace with your API Key SID  
+account_sid = "AC61be89f63333b748858f9671feef26d5"  # Replace with your Account SID
+api_key_sid = "SK1f80046aafe5ba42d3230b7d00c8e11f"  # Replace with your API Key SID  
 api_key_secret = "ff"  # Replace with your API Secret
 twiml_app_sid = "ff"  # Replace with your TwiML App SID
 
