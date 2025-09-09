@@ -9,7 +9,7 @@ export const generateTwilioToken = async (): Promise<string> => {
     // STEP 1: Replace this with the JWT token from your Python script
     // Run: python twilio_token_generator.py
     // Then copy the generated token and paste it here:
-    const jwtToken: string = "PASTE_YOUR_JWT_TOKEN_HERE";
+    const jwtToken: string = "eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiJTSzFmODAwNDZhYWZlNWJhNDJkMzIzMGI3ZDAwYzhlMTFmLTE3NTc0MDEzMTgiLCJncmFudHMiOnsidm9pY2UiOnsiaW5jb21pbmciOnsiYWxsb3ciOnRydWV9LCJvdXRnb2luZyI6eyJhcHBsaWNhdGlvbl9zaWQiOiJBUGE1ZmVlODkyYWM5OGZkZmI4ZmQ4ZDBiYTRlYjA3YjRhIn19LCJpZGVudGl0eSI6InVzZXJfMTIzIn0sImlzcyI6IlNLMWY4MDA0NmFhZmU1YmE0MmQzMjMwYjdkMDBjOGUxMWYiLCJleHAiOjE3NTc0MDQ5MTgsIm5iZiI6MTc1NzQwMTMxOCwic3ViIjoiQUM2MWJlODlmNjMzMzNiNzQ4ODU4Zjk2NzFmZWVmMjZkNSJ9.9WsiabIUEo2IOuMTPmiqENwOzmk-2-i4tq01eTi_Ufg";
     
     // Validation
     if (!jwtToken || jwtToken === "eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiJTSzFmODAwNDZhYWZlNWJhNDJkMzIzMGI3ZDAwYzhlMTFmLTE3NTc0MDEzMTgiLCJncmFudHMiOnsidm9pY2UiOnsiaW5jb21pbmciOnsiYWxsb3ciOnRydWV9LCJvdXRnb2luZyI6eyJhcHBsaWNhdGlvbl9zaWQiOiJBUGE1ZmVlODkyYWM5OGZkZmI4ZmQ4ZDBiYTRlYjA3YjRhIn19LCJpZGVudGl0eSI6InVzZXJfMTIzIn0sImlzcyI6IlNLMWY4MDA0NmFhZmU1YmE0MmQzMjMwYjdkMDBjOGUxMWYiLCJleHAiOjE3NTc0MDQ5MTgsIm5iZiI6MTc1NzQwMTMxOCwic3ViIjoiQUM2MWJlODlmNjMzMzNiNzQ4ODU4Zjk2NzFmZWVmMjZkNSJ9.9WsiabIUEo2IOuMTPmiqENwOzmk-2-i4tq01eTi_Ufg") {
