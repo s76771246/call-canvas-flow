@@ -1,8 +1,7 @@
-import time
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 
-# Required credentials - UPDATE THESE VALUES WITH YOUR TWILIO CREDENTIALS
+# Required credentials - REPLACE THESE VALUES WITH YOUR ACTUAL TWILIO CREDENTIALS
 account_sid = "ff"  # Replace with your Account SID
 api_key_sid = "ff"  # Replace with your API Key SID  
 api_key_secret = "ff"  # Replace with your API Secret
@@ -28,7 +27,17 @@ voice_grant = VoiceGrant(
 token.add_grant(voice_grant)
 
 jwt_token = token.to_jwt()
-print("\n✅ COPY THIS TOKEN INTO YOUR REACT APP:\n")
+print("\n" + "="*80)
+print("🎯 TWILIO ACCESS TOKEN GENERATOR")
+print("="*80)
+print(f"📱 Identity: {identity}")
+print(f"⏰ Token expires in: 1 hour")
+print("\n🔑 COPY THIS TOKEN:")
+print("-" * 80)
 print(jwt_token)
-print(f"\n🆔 Token Identity: {identity}")
-print(f"⏰ Expires in: 1 hour")
+print("-" * 80)
+print("\n📋 INSTRUCTIONS:")
+print("1. Copy the token above")
+print("2. Paste it in src/lib/twilioTokenGenerator.ts (replace PASTE_YOUR_JWT_TOKEN_HERE)")
+print("3. Save the file and test your call")
+print("="*80)
