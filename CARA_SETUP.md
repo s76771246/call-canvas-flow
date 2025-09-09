@@ -30,44 +30,48 @@
 3. Set Identity: `TestUser`
 4. Copy the generated JWT token
 
-### Option B: Backend Setup (Recommended for Production)
-Set up a backend endpoint to generate tokens dynamically:
+### Option B: Local Token Generation (Recommended)
+Create a local Python script to generate tokens:
 
-#### Environment Variables
+#### Create token_generator.py locally:
 
-```env
-TWILIO_ACCOUNT_SID=your_account_sid_here
-TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_API_KEY=your_api_key_here
-TWILIO_API_SECRET=your_api_secret_here
-TWILIO_PHONE_NUMBER=+1234567890
+```python
+from twilio.jwt.access_token import AccessToken
+from twilio.jwt.access_token.grants import VoiceGrant
+
+# Replace with your actual Twilio credentials
+account_sid = "your_account_sid_here"
+api_key_sid = "your_api_key_sid_here"  
+api_key_secret = "your_api_secret_here"
+twiml_app_sid = "your_twiml_app_sid_here"
+
+# Identity for the browser user
+identity = "user_123"
+
+# Create the access token
+token = AccessToken(
+    account_sid,
+    api_key_sid,
+    api_key_secret,
+    identity=identity,
+    ttl=3600  # token valid for 1 hour
+)
+
+# Attach VoiceGrant
+voice_grant = VoiceGrant(
+    outgoing_application_sid=twiml_app_sid,
+    incoming_allow=True
+)
+token.add_grant(voice_grant)
+
+jwt_token = token.to_jwt()
+print("Generated JWT Token:")
+print(jwt_token)
 ```
 
-#### Token Endpoint
-
-```javascript
-// Node.js/Express example
-const AccessToken = require('twilio').jwt.AccessToken;
-const VoiceGrant = AccessToken.VoiceGrant;
-
-app.post('/api/twilio/token', (req, res) => {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const apiKey = process.env.TWILIO_API_KEY;
-  const apiSecret = process.env.TWILIO_API_SECRET;
-  
-  const token = new AccessToken(accountSid, apiKey, apiSecret, {
-    identity: 'user_' + Date.now()
-  });
-  
-  const voiceGrant = new VoiceGrant({
-    outgoingApplicationSid: process.env.TWILIO_TWIML_APP_SID,
-    incomingAllow: true
-  });
-  
-  token.addGrant(voiceGrant);
-  
-  res.json({ token: token.toJwt() });
-});
+#### Run the script:
+```bash
+python token_generator.py
 ```
 
 #### TwiML Application
@@ -95,26 +99,17 @@ app.post('/api/twilio/voice', (req, res) => {
 
 ## Step 3: Update Frontend Configuration
 
-In `src/components/TwilioProvider.tsx`, update the `TWILIO_CONFIG` object:
+In `src/lib/twilioTokenGenerator.ts`, replace the placeholder with your generated token:
 
 ```typescript
-const TWILIO_CONFIG = {
-  // Paste your JWT token here (from Step 2)
-  JWT_TOKEN: 'eyJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIiwidHlwIjoiSldUIn0...',
-  
-  // Your Twilio phone number
-  FROM_NUMBER: '+15551234567',
-  
-  // Phone number to call for testing
-  TO_NUMBER: '+15559876543',
-};
+const jwtToken: string = "your_generated_jwt_token_here";
 ```
 
 ## Step 4: Test the Setup
 
 1. Save the changes and refresh the page
 2. Check the browser console for any errors
-3. Click "Call Me" - you should hear the phone ring on the target number
+3. Click "Connect with Agent" - you should hear the phone ring on the target number
 4. The call should connect and you'll hear audio through your browser
 
 ## Troubleshooting
@@ -122,7 +117,7 @@ const TWILIO_CONFIG = {
 ### Common Issues:
 
 1. **"JWT token is invalid or expired"**
-   - Generate a new token from Twilio Console
+   - Generate a new token using your local Python script
    - Tokens expire after 24 hours by default
 
 2. **"Microphone permission denied"**
@@ -131,7 +126,7 @@ const TWILIO_CONFIG = {
 
 3. **"Device not ready"**
    - Check your JWT token is valid
-   - Verify your Twilio credentials
+   - Verify your Twilio credentials in your local script
    - Check browser console for detailed errors
 
 4. **Call connects but no audio**
@@ -149,7 +144,7 @@ The app now includes detailed console logging. Open browser DevTools to see:
 ## Production Considerations
 
 For production use:
-1. Set up a backend token server (don't hardcode JWT tokens)
+1. Set up a backend token server for dynamic token generation
 2. Implement proper error handling
 3. Add user authentication
 4. Configure TwiML applications for your use case
@@ -167,7 +162,7 @@ For production use:
 ✅ **Configuration validation**  
 ✅ **Debug mode with detailed logging**  
 
-⚠️ **Requires Twilio setup for live calls**
+⚠️ **Requires local token generation for live calls**
 ```
 
 **Ready to make live calls once configured!** 🎉
